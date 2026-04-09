@@ -1,7 +1,7 @@
 import telebot
 from telebot import types
 
-TOKEN = "8312829406:AAGwpVHnT-LFsqBCLbVhYl5dxbu2heYVshk"
+TOKEN = "8773898221:AAGy67kpPvmxiHWCMagPdljvKWWX9fxz-FI"
 SOFT_LINK = "https://www.mediafire.com/file/aulm7t7mu6388sc/zenin_crack.exe/file"
 
 # ПРЯМАЯ ССЫЛКА НА КАРТИНКУ (замени на свою)
