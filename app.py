@@ -26,7 +26,7 @@ def callback(call):
     
     elif call.data == "more":
         # Замени ссылку на свою картинку
-        bot.send_photo(call.message.chat.id, "https://i.ibb.co/k2b3JTMK/gg.jpg", caption="📌 Подробнее о софте")
+        bot.send_photo(call.message.chat.id, "https://i.ibb.co/vxLfXLY4/gg.png", caption="📌 Подробнее о софте")
 
 # ЭТО ВАЖНО: Flask сервер для Render
 @app.route('/')
