@@ -1,13 +1,14 @@
+import os
+import threading
+from flask import Flask
 import telebot
 from telebot import types
 
-TOKEN = "8773898221:AAGy67kpPvmxiHWCMagPdljvKWWX9fxz-FI"
+TOKEN = "8773898221:AAGy67kpPvmxiHWCMagPdljvKWWX9fxz-FI"  # ЗАМЕНИТЕ НА СВОЙ ТОКЕН
 SOFT_LINK = "https://www.mediafire.com/file/aulm7t7mu6388sc/zenin_crack.exe/file"
 
-# ПРЯМАЯ ССЫЛКА НА КАРТИНКУ (замени на свою)
-IMAGE_URL = "https://i.postimg.cc/4ykCrCCF/gg.jpg"  # <--- СЮДА ВСТАВЬ СВОЮ ССЫЛКУ
-
 bot = telebot.TeleBot(TOKEN)
+app = Flask(__name__)
 
 @bot.message_handler(commands=['start'])
 def start(message):
@@ -24,12 +25,23 @@ def callback(call):
         bot.send_message(call.message.chat.id, f"🔗 Ссылка для скачивания:\n{SOFT_LINK}")
     
     elif call.data == "more":
-        # Отправляем картинку по ссылке
-        bot.send_photo(
-            call.message.chat.id, 
-            IMAGE_URL, 
-            caption="📌 Подробнее о софте:"
-        )
+        # Замени ссылку на свою картинку
+        bot.send_photo(call.message.chat.id, "https://i.imgur.com/your_image.jpg", caption="📌 Подробнее о софте")
 
-print("✅ Бот запущен!")
-bot.infinity_polling()
+# ЭТО ВАЖНО: Flask сервер для Render
+@app.route('/')
+def index():
+    return "Bot is running!"
+
+@app.route('/healthz')
+def health():
+    return "OK"
+
+def run_bot():
+    bot.infinity_polling()
+
+if __name__ == "__main__":
+    bot_thread = threading.Thread(target=run_bot)
+    bot_thread.start()
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
