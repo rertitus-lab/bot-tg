@@ -4,7 +4,7 @@ from flask import Flask
 import telebot
 from telebot import types
 
-TOKEN = "8328766400:AAFlDEAcrnUwYgGdVLYMv_MTpg9yBinZ6fg"  # Замени на свой токен!
+TOKEN = "8312829406:AAGwpVHnT-LFsqBCLbVhYl5dxbu2heYVshk"  # Замени на свой токен!
 SOFT_LINK = "https://www.mediafire.com/file/aulm7t7mu6388sc/zenin_crack.exe/file"
 
 bot = telebot.TeleBot(TOKEN)
