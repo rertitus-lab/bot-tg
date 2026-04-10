@@ -4,13 +4,15 @@ from flask import Flask, request
 import telebot
 from telebot import types
 
-TOKEN = "8294974465:AAFfeR0krjHmDUwdQm7rO5N6VfnV8ZvFrOI"  # ЗАМЕНИ НА СВОЙ
+# =============== НАСТРОЙКИ (ЗАМЕНИ НА СВОИ) ===============
+TOKEN = "8294974465:AAFfeR0krjHmDUwdQm7rO5N6VfnV8ZvFrOI"  # ⚠️ ЗАМЕНИ НА НОВЫЙ ТОКЕН!
 SOFT_LINK = "https://www.mediafire.com/file/aulm7t7mu6388sc/Crack_Sbornik.exe/file"
 IMAGE_URL = "https://i.ibb.co/KpKqsd8x/gg.png"
 
 # ТВОЙ TELEGRAM ID (узнай у @userinfobot)
-ADMIN_ID = 7859226148
+ADMIN_ID = 7859226148  # ⚠️ ПРОВЕРЬ, ЧТО ЭТО ТВОЙ ID!
 
+# =============== ИНИЦИАЛИЗАЦИЯ ===============
 bot = telebot.TeleBot(TOKEN)
 app = Flask(__name__)
 
@@ -33,29 +35,38 @@ def update_cooldown(user_id):
 def is_admin(user_id):
     return user_id == ADMIN_ID
 
-# =============== КОМАНДА /report ===============
+# =============== КОМАНДА /REPORT (ИСПРАВЛЕНА) ===============
 @bot.message_handler(commands=['report'])
 def report_message(message):
-    user_id = message.from_user.id
-    user_name = message.from_user.first_name
-    user_username = f"@{message.from_user.username}" if message.from_user.username else "нет username"
-    
-    # Получаем текст жалобы (всё, что после /report)
-    report_text = message.text.replace('/report', '').strip()
-    
-    if not report_text:
-        bot.reply_to(message, "❌ Пожалуйста, напишите жалобу после команды.\n\nПример: `/report ссылка не работает`", parse_mode="Markdown")
-        return
-    
-    # Отправляем жалобу админу
-    admin_message = f"📢 **НОВАЯ ЖАЛОБА!**\n\n"
-    admin_message += f"👤 **От:** {user_name}\n"
-    admin_message += f"🆔 **ID:** `{user_id}`\n"
-    admin_message += f"📱 **Username:** {user_username}\n"
-    admin_message += f"📝 **Текст жалобы:**\n{report_text}\n"
-    admin_message += f"⏰ **Время:** {time.strftime('%Y-%m-%d %H:%M:%S')}"
-    
     try:
+        user_id = message.from_user.id
+        user_name = message.from_user.first_name
+        user_username = f"@{message.from_user.username}" if message.from_user.username else "нет username"
+        
+        # Получаем текст жалобы (всё, что после /report)
+        report_text = message.text.replace('/report', '').strip()
+        
+        if not report_text:
+            bot.reply_to(message, "❌ Пожалуйста, напишите жалобу после команды.\n\nПример: `/report ссылка не работает`", parse_mode="Markdown")
+            return
+        
+        # Проверяем, может ли бот писать админу (отправляем тестовое действие)
+        try:
+            bot.send_chat_action(ADMIN_ID, 'typing')
+        except Exception as e:
+            bot.reply_to(message, f"⚠️ Ошибка: администратор ещё не начал диалог с ботом.\n\nПожалуйста, сообщите администратору, чтобы он написал боту команду /start")
+            print(f"Бот не может писать админу: {e}")
+            return
+        
+        # Формируем сообщение для админа
+        admin_message = f"📢 **НОВАЯ ЖАЛОБА!**\n\n"
+        admin_message += f"👤 **От:** {user_name}\n"
+        admin_message += f"🆔 **ID:** `{user_id}`\n"
+        admin_message += f"📱 **Username:** {user_username}\n"
+        admin_message += f"📝 **Текст жалобы:**\n{report_text}\n"
+        admin_message += f"⏰ **Время:** {time.strftime('%Y-%m-%d %H:%M:%S')}"
+        
+        # Отправляем жалобу админу
         bot.send_message(ADMIN_ID, admin_message, parse_mode="Markdown")
         
         # Кнопка для быстрого ответа пользователю
@@ -63,12 +74,14 @@ def report_message(message):
         keyboard.add(types.InlineKeyboardButton("💬 Ответить пользователю", callback_data=f"reply_{user_id}"))
         bot.send_message(ADMIN_ID, "🔧 Действия:", reply_markup=keyboard)
         
+        # Подтверждение пользователю
         bot.reply_to(message, "✅ Ваша жалоба отправлена администратору! Мы рассмотрим её в ближайшее время.")
+        
     except Exception as e:
-        bot.reply_to(message, "❌ Не удалось отправить жалобу. Попробуйте позже.")
-        print(f"Ошибка отправки жалобы: {e}")
+        bot.reply_to(message, f"❌ Ошибка при отправке жалобы: {str(e)[:100]}")
+        print(f"Ошибка в report_message: {e}")
 
-# Обработчик для кнопки "Ответить пользователю" (для админа)
+# =============== ОТВЕТ ПОЛЬЗОВАТЕЛЮ ОТ АДМИНА ===============
 @bot.callback_query_handler(func=lambda call: call.data.startswith('reply_'))
 def reply_to_user(call):
     if not is_admin(call.from_user.id):
@@ -86,10 +99,10 @@ def send_reply_to_user(message, user_id):
     try:
         bot.send_message(user_id, f"📢 **Ответ администратора:**\n\n{reply_text}", parse_mode="Markdown")
         bot.send_message(message.chat.id, f"✅ Ответ отправлен пользователю {user_id}")
-    except:
-        bot.send_message(message.chat.id, f"❌ Не удалось отправить ответ. Возможно, пользователь заблокировал бота.")
+    except Exception as e:
+        bot.send_message(message.chat.id, f"❌ Не удалось отправить ответ. Ошибка: {e}")
 
-# =============== ОСТАЛЬНЫЕ КОМАНДЫ ===============
+# =============== КОМАНДА /START ===============
 @bot.message_handler(commands=['start'])
 def start(message):
     user_id = message.from_user.id
@@ -110,6 +123,7 @@ def start(message):
     
     bot.send_message(message.chat.id, "Crack Sbornik - 💥 лучший сборник кряков именно для тебя!", reply_markup=keyboard)
 
+# =============== АДМИН-ПАНЕЛЬ ===============
 @bot.message_handler(commands=['admin'])
 def admin_panel(message):
     if not is_admin(message.from_user.id):
@@ -126,7 +140,7 @@ def admin_panel(message):
     
     bot.send_message(message.chat.id, "🔧 **Админ-панель**", parse_mode="Markdown", reply_markup=keyboard)
 
-# Обработчик для обычных кнопок
+# =============== ОБЫЧНЫЕ КНОПКИ ===============
 @bot.callback_query_handler(func=lambda call: call.data in ["download", "more", "share"])
 def user_callback(call):
     global download_count
@@ -154,7 +168,7 @@ def user_callback(call):
         bot.answer_callback_query(call.id)
         bot.send_message(call.message.chat.id, f"👥 **Поделиться:**\n\nhttps://t.me/{bot.get_me().username}", parse_mode="Markdown")
 
-# Обработчик для админских кнопок
+# =============== АДМИН-ОБРАБОТЧИКИ ===============
 @bot.callback_query_handler(func=lambda call: call.data.startswith('admin_'))
 def admin_callback(call):
     global download_count, SOFT_LINK, IMAGE_URL
@@ -212,7 +226,7 @@ def broadcast(message):
     
     bot.send_message(message.chat.id, f"✅ **Рассылка завершена!**\n\n📨 Доставлено: {success}\n❌ Ошибок: {fail}")
 
-# Webhook для Render
+# =============== WEBHOOK ДЛЯ RENDER ===============
 @app.route(f'/{TOKEN}', methods=['POST'])
 def webhook():
     if request.headers.get('content-type') == 'application/json':
@@ -226,13 +240,29 @@ def webhook():
 def index():
     return "Bot is running!"
 
+@app.route('/healthz')
+def health():
+    return "OK"
+
+# =============== ЗАПУСК ===============
 if __name__ == "__main__":
-    bot.remove_webhook()
+    # Удаляем старый webhook
+    try:
+        bot.remove_webhook()
+        print("✅ Webhook удалён")
+    except:
+        pass
     time.sleep(1)
     
-    webhook_url = f"https://{os.environ.get('RENDER_EXTERNAL_HOSTNAME', 'bot-tg-1-tw5w.onrender.com')}/{TOKEN}"
-    bot.set_webhook(url=webhook_url)
-    print(f"✅ Webhook установлен: {webhook_url}")
+    # Устанавливаем новый webhook
+    render_hostname = os.environ.get('RENDER_EXTERNAL_HOSTNAME', 'bot-tg-1-tw5w.onrender.com')
+    webhook_url = f"https://{render_hostname}/{TOKEN}"
+    
+    try:
+        bot.set_webhook(url=webhook_url)
+        print(f"✅ Webhook установлен: {webhook_url}")
+    except Exception as e:
+        print(f"❌ Ошибка установки webhook: {e}")
     
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
