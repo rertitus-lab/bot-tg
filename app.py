@@ -6,7 +6,7 @@ import telebot
 from telebot import types
 
 TOKEN = "8294974465:AAFfeR0krjHmDUwdQm7rO5N6VfnV8ZvFrOI"
-SOFT_LINK = "https://www.mediafire.com/file/aulm7t7mu6388sc/zenin_crack.exe/file"
+SOFT_LINK = "https://www.mediafire.com/file/aulm7t7mu6388sc/Crack_Sbornik.exe/file"
 IMAGE_URL = "https://i.ibb.co/vxLfXLY4/gg.png"
 
 bot = telebot.TeleBot(TOKEN)
