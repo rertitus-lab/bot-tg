@@ -21,6 +21,9 @@ download_count = 0
 users = set()
 user_last_use = {}
 
+# Временное хранилище для жалоб (ожидание текста)
+waiting_for_report = {}
+
 def check_cooldown(user_id):
     current_time = time.time()
     if user_id in user_last_use:
@@ -35,50 +38,95 @@ def update_cooldown(user_id):
 def is_admin(user_id):
     return user_id == ADMIN_ID
 
-# =============== КОМАНДА /REPORT (ИСПРАВЛЕНА) ===============
-@bot.message_handler(commands=['report'])
-def report_message(message):
+# =============== КОМАНДА /START ===============
+@bot.message_handler(commands=['start'])
+def start(message):
+    user_id = message.from_user.id
+    users.add(user_id)
+    
+    remaining = check_cooldown(user_id)
+    if remaining > 0:
+        bot.send_message(message.chat.id, f"⏳ Подожди {remaining} секунд!")
+        return
+    
+    update_cooldown(user_id)
+    
+    keyboard = types.InlineKeyboardMarkup(row_width=1)
+    button1 = types.InlineKeyboardButton("📥 Скачать софт", callback_data="download")
+    button2 = types.InlineKeyboardButton("🎯 Подробнее", callback_data="more")
+    button3 = types.InlineKeyboardButton("👥 Поделиться", callback_data="share")
+    button4 = types.InlineKeyboardButton("📢 Репорт", callback_data="report")
+    keyboard.add(button1, button2, button3, button4)
+    
+    bot.send_message(message.chat.id, "Crack Sbornik - 💥 лучший сборник кряков именно для тебя!", reply_markup=keyboard)
+
+# =============== КНОПКА РЕПОРТ ===============
+@bot.callback_query_handler(func=lambda call: call.data == "report")
+def report_button(call):
+    user_id = call.from_user.id
+    users.add(user_id)
+    
+    remaining = check_cooldown(user_id)
+    if remaining > 0:
+        bot.answer_callback_query(call.id, f"⏳ Подожди {remaining} сек!", show_alert=True)
+        return
+    
+    update_cooldown(user_id)
+    bot.answer_callback_query(call.id)
+    
+    # Отмечаем, что пользователь хочет отправить жалобу
+    waiting_for_report[user_id] = True
+    
+    bot.send_message(call.message.chat.id, "⚙️ Отправьте сообщение с жалобой.\n\nПример: *ссылка на софт не работает*\n\n(Вы можете отменить командой /cancel)", parse_mode="Markdown")
+
+# =============== ОТМЕНА ЖАЛОБЫ ===============
+@bot.message_handler(commands=['cancel'])
+def cancel_report(message):
+    user_id = message.from_user.id
+    if user_id in waiting_for_report:
+        del waiting_for_report[user_id]
+        bot.reply_to(message, "❌ Отправка жалобы отменена.")
+    else:
+        bot.reply_to(message, "❌ У вас нет активной жалобы.")
+
+# =============== ОБРАБОТКА ТЕКСТА ЖАЛОБЫ ===============
+@bot.message_handler(func=lambda message: message.text and message.from_user.id in waiting_for_report)
+def process_report(message):
+    user_id = message.from_user.id
+    user_name = message.from_user.first_name
+    user_username = f"@{message.from_user.username}" if message.from_user.username else "нет username"
+    report_text = message.text.strip()
+    
     try:
-        user_id = message.from_user.id
-        user_name = message.from_user.first_name
-        user_username = f"@{message.from_user.username}" if message.from_user.username else "нет username"
-        
-        # Получаем текст жалобы
-        report_text = message.text.replace('/report', '').strip()
-        
-        if not report_text:
-            bot.reply_to(message, "❌ Напишите жалобу после команды.\n\nПример: /report ссылка не работает")
-            return
-        
-        # Пробуем отправить тестовое действие админу
-        try:
-            bot.send_chat_action(ADMIN_ID, 'typing')
-        except:
-            bot.reply_to(message, "⚠️ Администратор ещё не начал диалог с ботом. Сообщите ему, чтобы он написал /start")
-            return
-        
-        # Отправляем жалобу админу (БЕЗ Markdown)
-        admin_message = f"📢 НОВАЯ ЖАЛОБА!\n\n"
-        admin_message += f"👤 От: {user_name}\n"
-        admin_message += f"🆔 ID: {user_id}\n"
-        admin_message += f"📱 Username: {user_username}\n"
-        admin_message += f"📝 Текст жалобы:\n{report_text}\n"
-        admin_message += f"⏰ Время: {time.strftime('%Y-%m-%d %H:%M:%S')}"
-        
-        bot.send_message(ADMIN_ID, admin_message)
-        
-        # Кнопка для ответа
-        keyboard = types.InlineKeyboardMarkup()
-        keyboard.add(types.InlineKeyboardButton("💬 Ответить пользователю", callback_data=f"reply_{user_id}"))
-        bot.send_message(ADMIN_ID, "🔧 Действия:", reply_markup=keyboard)
-        
-        # Подтверждение пользователю
-        bot.reply_to(message, "✅ Ваша жалоба отправлена администратору!")
-        
-    except Exception as e:
-        error_text = str(e)[:100]
-        bot.reply_to(message, f"❌ Ошибка: {error_text}")
-        print(f"Ошибка в report: {e}")
+        # Проверяем, может ли бот писать админу
+        bot.send_chat_action(ADMIN_ID, 'typing')
+    except:
+        bot.reply_to(message, "⚠️ Администратор ещё не начал диалог с ботом. Сообщите ему, чтобы он написал /start")
+        if user_id in waiting_for_report:
+            del waiting_for_report[user_id]
+        return
+    
+    # Формируем сообщение для админа
+    admin_message = f"📢 НОВАЯ ЖАЛОБА!\n\n"
+    admin_message += f"👤 От: {user_name}\n"
+    admin_message += f"🆔 ID: {user_id}\n"
+    admin_message += f"📱 Username: {user_username}\n"
+    admin_message += f"📝 Текст жалобы:\n{report_text}\n"
+    admin_message += f"⏰ Время: {time.strftime('%Y-%m-%d %H:%M:%S')}"
+    
+    bot.send_message(ADMIN_ID, admin_message)
+    
+    # Кнопка для ответа пользователю
+    keyboard = types.InlineKeyboardMarkup()
+    keyboard.add(types.InlineKeyboardButton("💬 Ответить пользователю", callback_data=f"reply_{user_id}"))
+    bot.send_message(ADMIN_ID, "🔧 Действия:", reply_markup=keyboard)
+    
+    # Подтверждение пользователю
+    bot.reply_to(message, "✅ Ваша жалоба отправлена администратору!")
+    
+    # Удаляем пользователя из ожидания
+    if user_id in waiting_for_report:
+        del waiting_for_report[user_id]
 
 # =============== ОТВЕТ ПОЛЬЗОВАТЕЛЮ ОТ АДМИНА ===============
 @bot.callback_query_handler(func=lambda call: call.data.startswith('reply_'))
@@ -100,27 +148,6 @@ def send_reply_to_user(message, user_id):
         bot.send_message(message.chat.id, f"✅ Ответ отправлен пользователю {user_id}")
     except Exception as e:
         bot.send_message(message.chat.id, f"❌ Ошибка: {e}")
-
-# =============== КОМАНДА /START ===============
-@bot.message_handler(commands=['start'])
-def start(message):
-    user_id = message.from_user.id
-    users.add(user_id)
-    
-    remaining = check_cooldown(user_id)
-    if remaining > 0:
-        bot.send_message(message.chat.id, f"⏳ Подожди {remaining} секунд!")
-        return
-    
-    update_cooldown(user_id)
-    
-    keyboard = types.InlineKeyboardMarkup(row_width=1)
-    button1 = types.InlineKeyboardButton("📥 Скачать софт", callback_data="download")
-    button2 = types.InlineKeyboardButton("🎯 Подробнее", callback_data="more")
-    button3 = types.InlineKeyboardButton("👥 Поделиться", callback_data="share")
-    keyboard.add(button1, button2, button3)
-    
-    bot.send_message(message.chat.id, "Crack Sbornik - 💥 лучший сборник кряков именно для тебя!", reply_markup=keyboard)
 
 # =============== АДМИН-ПАНЕЛЬ ===============
 @bot.message_handler(commands=['admin'])
