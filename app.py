@@ -28,6 +28,10 @@ waiting_for_report = {}
 blacklist = set()
 BLACKLIST_FILE = "blacklist.txt"
 
+# Трекер сообщений пользователей
+message_tracker = {}  # {user_id: {"count": 0, "username": "", "name": ""}}
+MESSAGE_FILE = "messages.txt"
+
 # =============== ФУНКЦИИ ДЛЯ ЧЁРНОГО СПИСКА ===============
 def load_blacklist():
     """Загружает чёрный список из файла"""
@@ -46,6 +50,42 @@ def save_blacklist():
 def is_banned(user_id):
     """Проверяет, забанен ли пользователь"""
     return user_id in blacklist
+
+# =============== ФУНКЦИИ ДЛЯ ТРЕКЕРА СООБЩЕНИЙ ===============
+def load_messages():
+    """Загружает трекер сообщений из файла"""
+    global message_tracker
+    if os.path.exists(MESSAGE_FILE):
+        with open(MESSAGE_FILE, 'r') as f:
+            for line in f:
+                if line.strip():
+                    parts = line.strip().split('|')
+                    if len(parts) == 4:
+                        user_id = int(parts[0])
+                        count = int(parts[1])
+                        username = parts[2]
+                        name = parts[3]
+                        message_tracker[user_id] = {"count": count, "username": username, "name": name}
+    print(f"✅ Загружен трекер сообщений: {len(message_tracker)} пользователей")
+
+def save_messages():
+    """Сохраняет трекер сообщений в файл"""
+    with open(MESSAGE_FILE, 'w') as f:
+        for user_id, data in message_tracker.items():
+            f.write(f"{user_id}|{data['count']}|{data['username']}|{data['name']}\n")
+
+def update_message_count(user_id, username, first_name):
+    """Обновляет счётчик сообщений для пользователя"""
+    if user_id in message_tracker:
+        message_tracker[user_id]["count"] += 1
+    else:
+        # Сохраняем username и first_name (на случай если username нет)
+        message_tracker[user_id] = {
+            "count": 1, 
+            "username": username if username else "", 
+            "name": first_name
+        }
+    save_messages()
 
 # =============== ФУНКЦИИ БАНА ===============
 def ban_user(message):
@@ -102,6 +142,17 @@ def update_cooldown(user_id):
 
 def is_admin(user_id):
     return user_id == ADMIN_ID
+
+# =============== ТРЕКЕР ВСЕХ СООБЩЕНИЙ ===============
+@bot.message_handler(func=lambda message: True)
+def track_all_messages(message):
+    user_id = message.from_user.id
+    username = message.from_user.username if message.from_user.username else ""
+    first_name = message.from_user.first_name
+    
+    # Пропускаем админа (если не хочешь считать его сообщения)
+    if user_id != ADMIN_ID:
+        update_message_count(user_id, username, first_name)
 
 # =============== КОМАНДА /START ===============
 @bot.message_handler(commands=['start'])
@@ -242,7 +293,8 @@ def admin_panel(message):
     btn6 = types.InlineKeyboardButton("🚫 Забанить пользователя", callback_data="admin_ban")
     btn7 = types.InlineKeyboardButton("✅ Разбанить пользователя", callback_data="admin_unban")
     btn8 = types.InlineKeyboardButton("📋 Список забаненных", callback_data="admin_banlist")
-    keyboard.add(btn1, btn2, btn3, btn4, btn5, btn6, btn7, btn8)
+    btn9 = types.InlineKeyboardButton("📊 Трекер сообщений", callback_data="admin_tracker")
+    keyboard.add(btn1, btn2, btn3, btn4, btn5, btn6, btn7, btn8, btn9)
     
     bot.send_message(message.chat.id, "🔧 Админ-панель", reply_markup=keyboard)
 
@@ -279,6 +331,31 @@ def user_callback(call):
     elif call.data == "share":
         bot.answer_callback_query(call.id)
         bot.send_message(call.message.chat.id, f"👥 Поделиться ботом:\n\nhttps://t.me/{bot.get_me().username}")
+
+# =============== ПОИСК ПОЛЬЗОВАТЕЛЯ ПО ID ===============
+def search_user_by_id(message):
+    try:
+        user_id = int(message.text.strip())
+        if user_id in message_tracker:
+            data = message_tracker[user_id]
+            
+            # Формируем отображение username
+            if data["username"]:
+                username_display = f"@{data['username']}"
+            else:
+                username_display = "❌ нет"
+            
+            bot.send_message(message.chat.id, f"📊 **Пользователь найден:**\n\n"
+                                              f"👤 Имя: {data['name']}\n"
+                                              f"📱 Username: {username_display}\n"
+                                              f"🆔 ID: `{user_id}`\n"
+                                              f"💬 Сообщений: {data['count']}", parse_mode="Markdown")
+        else:
+            bot.send_message(message.chat.id, f"❌ Пользователь с ID `{user_id}` не найден в трекере.", parse_mode="Markdown")
+    except ValueError:
+        bot.send_message(message.chat.id, "❌ Неверный ID. Введите число.")
+    except Exception as e:
+        bot.send_message(message.chat.id, f"❌ Ошибка: {e}")
 
 # =============== АДМИН-ОБРАБОТЧИКИ ===============
 @bot.callback_query_handler(func=lambda call: call.data.startswith('admin_'))
@@ -325,6 +402,48 @@ def admin_callback(call):
             bot.send_message(call.message.chat.id, f"📋 **Забаненные пользователи:**\n\n{ban_list}", parse_mode="Markdown")
         else:
             bot.send_message(call.message.chat.id, "📋 Чёрный список пуст.")
+    
+    elif call.data == "admin_tracker":
+        if not message_tracker:
+            bot.send_message(call.message.chat.id, "📊 Нет данных о сообщениях.")
+            return
+        
+        # Сортируем по количеству сообщений (от большего к меньшему)
+        sorted_users = sorted(message_tracker.items(), key=lambda x: x[1]["count"], reverse=True)
+        
+        # Формируем список
+        tracker_text = "📊 **Трекер сообщений пользователей:**\n\n"
+        tracker_text += "`#   Пользователь                    Сообщений`\n"
+        tracker_text += "`--- ------------------------------ ---------`\n"
+        
+        for i, (uid, data) in enumerate(sorted_users[:50], 1):  # Топ-50
+            # Формируем отображение: @username или (id) если нет username
+            if data["username"]:
+                display = f"@{data['username']} ({uid})"
+            else:
+                display = f"{uid}"
+            
+            # Обрезаем длинные имена (максимум 30 символов)
+            if len(display) > 30:
+                display = display[:27] + "..."
+            
+            count = data["count"]
+            tracker_text += f"`{i:<3} {display:<30} {count:>8}`\n"
+        
+        # Добавляем информацию
+        tracker_text += f"\n📌 *Всего пользователей:* {len(message_tracker)}"
+        tracker_text += f"\n📌 *Всего сообщений:* {sum(d['count'] for d in message_tracker.values())}"
+        
+        bot.send_message(call.message.chat.id, tracker_text, parse_mode="Markdown")
+        
+        # Кнопка для поиска по ID
+        keyboard = types.InlineKeyboardMarkup()
+        keyboard.add(types.InlineKeyboardButton("🔍 Поиск по ID", callback_data="admin_tracker_search"))
+        bot.send_message(call.message.chat.id, "🔎 Для поиска пользователя нажмите кнопку ниже:", reply_markup=keyboard)
+    
+    elif call.data == "admin_tracker_search":
+        msg = bot.send_message(call.message.chat.id, "🔍 Введите ID пользователя для поиска:")
+        bot.register_next_step_handler(msg, search_user_by_id)
 
 def change_link(message):
     global SOFT_LINK
@@ -376,8 +495,9 @@ def health():
 
 # =============== ЗАПУСК ===============
 if __name__ == "__main__":
-    # Загружаем чёрный список
+    # Загружаем чёрный список и трекер сообщений
     load_blacklist()
+    load_messages()
     
     # Удаляем старый webhook
     try:
