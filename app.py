@@ -79,7 +79,6 @@ def update_message_count(user_id, username, first_name):
     if user_id in message_tracker:
         message_tracker[user_id]["count"] += 1
     else:
-        # Сохраняем username и first_name (на случай если username нет)
         message_tracker[user_id] = {
             "count": 1, 
             "username": username if username else "", 
@@ -99,7 +98,6 @@ def ban_user(message):
         save_blacklist()
         bot.send_message(message.chat.id, f"✅ Пользователь `{user_id}` забанен!", parse_mode="Markdown")
         
-        # Попытка уведомить пользователя о бане
         try:
             bot.send_message(user_id, "❌ Вы были забанены в этом боте!")
         except:
@@ -117,7 +115,6 @@ def unban_user(message):
             save_blacklist()
             bot.send_message(message.chat.id, f"✅ Пользователь `{user_id}` разбанен!", parse_mode="Markdown")
             
-            # Попытка уведомить пользователя о разбане
             try:
                 bot.send_message(user_id, "✅ Вы были разбанены в этом боте!")
             except:
@@ -143,23 +140,11 @@ def update_cooldown(user_id):
 def is_admin(user_id):
     return user_id == ADMIN_ID
 
-# =============== ТРЕКЕР ВСЕХ СООБЩЕНИЙ ===============
-@bot.message_handler(func=lambda message: True)
-def track_all_messages(message):
-    user_id = message.from_user.id
-    username = message.from_user.username if message.from_user.username else ""
-    first_name = message.from_user.first_name
-    
-    # Пропускаем админа (если не хочешь считать его сообщения)
-    if user_id != ADMIN_ID:
-        update_message_count(user_id, username, first_name)
-
-# =============== КОМАНДА /START ===============
+# =============== КОМАНДЫ (ДОЛЖНЫ БЫТЬ ПЕРВЫМИ) ===============
 @bot.message_handler(commands=['start'])
 def start(message):
     user_id = message.from_user.id
     
-    # Проверка на бан
     if is_banned(user_id):
         bot.send_message(message.chat.id, "❌ Вы забанены в этом боте!")
         return
@@ -182,7 +167,26 @@ def start(message):
     
     bot.send_message(message.chat.id, "Crack Sbornik - 💥 лучший сборник кряков именно для тебя!", reply_markup=keyboard)
 
-# =============== КОМАНДА /CANCEL ===============
+@bot.message_handler(commands=['admin'])
+def admin_panel(message):
+    if not is_admin(message.from_user.id):
+        bot.send_message(message.chat.id, "❌ У вас нет доступа!")
+        return
+    
+    keyboard = types.InlineKeyboardMarkup(row_width=1)
+    btn1 = types.InlineKeyboardButton("📊 Статистика", callback_data="admin_stats")
+    btn2 = types.InlineKeyboardButton("📝 Сменить ссылку", callback_data="admin_change_link")
+    btn3 = types.InlineKeyboardButton("👥 Пользователи", callback_data="admin_users")
+    btn4 = types.InlineKeyboardButton("📢 Рассылка", callback_data="admin_broadcast")
+    btn5 = types.InlineKeyboardButton("🖼 Сменить картинку", callback_data="admin_change_image")
+    btn6 = types.InlineKeyboardButton("🚫 Забанить пользователя", callback_data="admin_ban")
+    btn7 = types.InlineKeyboardButton("✅ Разбанить пользователя", callback_data="admin_unban")
+    btn8 = types.InlineKeyboardButton("📋 Список забаненных", callback_data="admin_banlist")
+    btn9 = types.InlineKeyboardButton("📊 Трекер сообщений", callback_data="admin_tracker")
+    keyboard.add(btn1, btn2, btn3, btn4, btn5, btn6, btn7, btn8, btn9)
+    
+    bot.send_message(message.chat.id, "🔧 Админ-панель", reply_markup=keyboard)
+
 @bot.message_handler(commands=['cancel'])
 def cancel_report(message):
     user_id = message.from_user.id
@@ -197,7 +201,6 @@ def cancel_report(message):
 def report_button(call):
     user_id = call.from_user.id
     
-    # Проверка на бан
     if is_banned(user_id):
         bot.answer_callback_query(call.id, "❌ Вы забанены!", show_alert=True)
         return
@@ -212,12 +215,11 @@ def report_button(call):
     update_cooldown(user_id)
     bot.answer_callback_query(call.id)
     
-    # Отмечаем, что пользователь хочет отправить жалобу
     waiting_for_report[user_id] = True
     
-    bot.send_message(call.message.chat.id, "⚙️ Отправьте сообщение с жалобой.\n\nПример: *ссылка на софт не работает*\n\n(Вы можете отменить командой /cancel)", parse_mode="Markdown")
+    bot.send_message(call.message.chat.id, "⚙️ Отправьте сообщение с жалобой.\n\nПример: ссылка на софт не работает\n\n(Вы можете отменить командой /cancel)")
 
-# =============== ОБРАБОТКА ТЕКСТА ЖАЛОБЫ ===============
+# =============== ОБРАБОТЧИК ЖАЛОБ ===============
 @bot.message_handler(func=lambda message: message.text and message.from_user.id in waiting_for_report)
 def process_report(message):
     user_id = message.from_user.id
@@ -226,7 +228,6 @@ def process_report(message):
     report_text = message.text.strip()
     
     try:
-        # Проверяем, может ли бот писать админу
         bot.send_chat_action(ADMIN_ID, 'typing')
     except:
         bot.reply_to(message, "⚠️ Администратор ещё не начал диалог с ботом. Сообщите ему, чтобы он написал /start")
@@ -234,7 +235,6 @@ def process_report(message):
             del waiting_for_report[user_id]
         return
     
-    # Формируем сообщение для админа
     admin_message = f"📢 НОВАЯ ЖАЛОБА!\n\n"
     admin_message += f"👤 От: {user_name}\n"
     admin_message += f"🆔 ID: {user_id}\n"
@@ -244,15 +244,12 @@ def process_report(message):
     
     bot.send_message(ADMIN_ID, admin_message)
     
-    # Кнопка для ответа пользователю
     keyboard = types.InlineKeyboardMarkup()
     keyboard.add(types.InlineKeyboardButton("💬 Ответить пользователю", callback_data=f"reply_{user_id}"))
     bot.send_message(ADMIN_ID, "🔧 Действия:", reply_markup=keyboard)
     
-    # Подтверждение пользователю
     bot.reply_to(message, "✅ Ваша жалоба отправлена администратору!")
     
-    # Удаляем пользователя из ожидания
     if user_id in waiting_for_report:
         del waiting_for_report[user_id]
 
@@ -277,27 +274,6 @@ def send_reply_to_user(message, user_id):
     except Exception as e:
         bot.send_message(message.chat.id, f"❌ Ошибка: {e}")
 
-# =============== АДМИН-ПАНЕЛЬ ===============
-@bot.message_handler(commands=['admin'])
-def admin_panel(message):
-    if not is_admin(message.from_user.id):
-        bot.send_message(message.chat.id, "❌ У вас нет доступа!")
-        return
-    
-    keyboard = types.InlineKeyboardMarkup(row_width=1)
-    btn1 = types.InlineKeyboardButton("📊 Статистика", callback_data="admin_stats")
-    btn2 = types.InlineKeyboardButton("📝 Сменить ссылку", callback_data="admin_change_link")
-    btn3 = types.InlineKeyboardButton("👥 Пользователи", callback_data="admin_users")
-    btn4 = types.InlineKeyboardButton("📢 Рассылка", callback_data="admin_broadcast")
-    btn5 = types.InlineKeyboardButton("🖼 Сменить картинку", callback_data="admin_change_image")
-    btn6 = types.InlineKeyboardButton("🚫 Забанить пользователя", callback_data="admin_ban")
-    btn7 = types.InlineKeyboardButton("✅ Разбанить пользователя", callback_data="admin_unban")
-    btn8 = types.InlineKeyboardButton("📋 Список забаненных", callback_data="admin_banlist")
-    btn9 = types.InlineKeyboardButton("📊 Трекер сообщений", callback_data="admin_tracker")
-    keyboard.add(btn1, btn2, btn3, btn4, btn5, btn6, btn7, btn8, btn9)
-    
-    bot.send_message(message.chat.id, "🔧 Админ-панель", reply_markup=keyboard)
-
 # =============== ОБЫЧНЫЕ КНОПКИ ===============
 @bot.callback_query_handler(func=lambda call: call.data in ["download", "more", "share"])
 def user_callback(call):
@@ -305,7 +281,6 @@ def user_callback(call):
     
     user_id = call.from_user.id
     
-    # Проверка на бан
     if is_banned(user_id):
         bot.answer_callback_query(call.id, "❌ Вы забанены!", show_alert=True)
         return
@@ -339,7 +314,6 @@ def search_user_by_id(message):
         if user_id in message_tracker:
             data = message_tracker[user_id]
             
-            # Формируем отображение username
             if data["username"]:
                 username_display = f"@{data['username']}"
             else:
@@ -408,35 +382,29 @@ def admin_callback(call):
             bot.send_message(call.message.chat.id, "📊 Нет данных о сообщениях.")
             return
         
-        # Сортируем по количеству сообщений (от большего к меньшему)
         sorted_users = sorted(message_tracker.items(), key=lambda x: x[1]["count"], reverse=True)
         
-        # Формируем список
         tracker_text = "📊 **Трекер сообщений пользователей:**\n\n"
         tracker_text += "`#   Пользователь                    Сообщений`\n"
         tracker_text += "`--- ------------------------------ ---------`\n"
         
-        for i, (uid, data) in enumerate(sorted_users[:50], 1):  # Топ-50
-            # Формируем отображение: @username или (id) если нет username
+        for i, (uid, data) in enumerate(sorted_users[:50], 1):
             if data["username"]:
                 display = f"@{data['username']} ({uid})"
             else:
                 display = f"{uid}"
             
-            # Обрезаем длинные имена (максимум 30 символов)
             if len(display) > 30:
                 display = display[:27] + "..."
             
             count = data["count"]
             tracker_text += f"`{i:<3} {display:<30} {count:>8}`\n"
         
-        # Добавляем информацию
         tracker_text += f"\n📌 *Всего пользователей:* {len(message_tracker)}"
         tracker_text += f"\n📌 *Всего сообщений:* {sum(d['count'] for d in message_tracker.values())}"
         
         bot.send_message(call.message.chat.id, tracker_text, parse_mode="Markdown")
         
-        # Кнопка для поиска по ID
         keyboard = types.InlineKeyboardMarkup()
         keyboard.add(types.InlineKeyboardButton("🔍 Поиск по ID", callback_data="admin_tracker_search"))
         bot.send_message(call.message.chat.id, "🔎 Для поиска пользователя нажмите кнопку ниже:", reply_markup=keyboard)
@@ -463,7 +431,6 @@ def broadcast(message):
     bot.send_message(message.chat.id, "📢 Начинаю рассылку...")
     
     for user_id in users:
-        # Пропускаем забаненных
         if is_banned(user_id):
             continue
         try:
@@ -474,6 +441,17 @@ def broadcast(message):
         time.sleep(0.05)
     
     bot.send_message(message.chat.id, f"✅ Рассылка завершена!\n\n📨 Доставлено: {success}\n❌ Ошибок: {fail}")
+
+# =============== ТРЕКЕР ВСЕХ СООБЩЕНИЙ (САМЫЙ ПОСЛЕДНИЙ) ===============
+@bot.message_handler(func=lambda message: True, content_types=['text'])
+def track_all_messages(message):
+    user_id = message.from_user.id
+    username = message.from_user.username if message.from_user.username else ""
+    first_name = message.from_user.first_name
+    
+    if user_id != ADMIN_ID:
+        update_message_count(user_id, username, first_name)
+    # Не блокируем выполнение команд
 
 # =============== WEBHOOK ДЛЯ RENDER ===============
 @app.route(f'/{TOKEN}', methods=['POST'])
@@ -495,11 +473,9 @@ def health():
 
 # =============== ЗАПУСК ===============
 if __name__ == "__main__":
-    # Загружаем чёрный список и трекер сообщений
     load_blacklist()
     load_messages()
     
-    # Удаляем старый webhook
     try:
         bot.remove_webhook()
         print("✅ Webhook удалён")
@@ -507,7 +483,6 @@ if __name__ == "__main__":
         pass
     time.sleep(1)
     
-    # Устанавливаем новый webhook
     render_hostname = os.environ.get('RENDER_EXTERNAL_HOSTNAME', 'bot-tg-1-tw5w.onrender.com')
     webhook_url = f"https://{render_hostname}/{TOKEN}"
     
