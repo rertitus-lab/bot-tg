@@ -24,6 +24,71 @@ user_last_use = {}
 # Временное хранилище для жалоб (ожидание текста)
 waiting_for_report = {}
 
+# Чёрный список (забаненные пользователи)
+blacklist = set()
+BLACKLIST_FILE = "blacklist.txt"
+
+# =============== ФУНКЦИИ ДЛЯ ЧЁРНОГО СПИСКА ===============
+def load_blacklist():
+    """Загружает чёрный список из файла"""
+    global blacklist
+    if os.path.exists(BLACKLIST_FILE):
+        with open(BLACKLIST_FILE, 'r') as f:
+            blacklist = set(int(line.strip()) for line in f if line.strip())
+    print(f"✅ Загружен чёрный список: {len(blacklist)} пользователей")
+
+def save_blacklist():
+    """Сохраняет чёрный список в файл"""
+    with open(BLACKLIST_FILE, 'w') as f:
+        for user_id in blacklist:
+            f.write(f"{user_id}\n")
+
+def is_banned(user_id):
+    """Проверяет, забанен ли пользователь"""
+    return user_id in blacklist
+
+# =============== ФУНКЦИИ БАНА ===============
+def ban_user(message):
+    try:
+        user_id = int(message.text.strip())
+        if user_id == ADMIN_ID:
+            bot.send_message(message.chat.id, "❌ Нельзя забанить администратора!")
+            return
+        
+        blacklist.add(user_id)
+        save_blacklist()
+        bot.send_message(message.chat.id, f"✅ Пользователь `{user_id}` забанен!", parse_mode="Markdown")
+        
+        # Попытка уведомить пользователя о бане
+        try:
+            bot.send_message(user_id, "❌ Вы были забанены в этом боте!")
+        except:
+            pass
+    except ValueError:
+        bot.send_message(message.chat.id, "❌ Неверный ID. Введите число.")
+    except Exception as e:
+        bot.send_message(message.chat.id, f"❌ Ошибка: {e}")
+
+def unban_user(message):
+    try:
+        user_id = int(message.text.strip())
+        if user_id in blacklist:
+            blacklist.remove(user_id)
+            save_blacklist()
+            bot.send_message(message.chat.id, f"✅ Пользователь `{user_id}` разбанен!", parse_mode="Markdown")
+            
+            # Попытка уведомить пользователя о разбане
+            try:
+                bot.send_message(user_id, "✅ Вы были разбанены в этом боте!")
+            except:
+                pass
+        else:
+            bot.send_message(message.chat.id, f"❌ Пользователь `{user_id}` не в чёрном списке.", parse_mode="Markdown")
+    except ValueError:
+        bot.send_message(message.chat.id, "❌ Неверный ID. Введите число.")
+    except Exception as e:
+        bot.send_message(message.chat.id, f"❌ Ошибка: {e}")
+
 def check_cooldown(user_id):
     current_time = time.time()
     if user_id in user_last_use:
@@ -42,6 +107,12 @@ def is_admin(user_id):
 @bot.message_handler(commands=['start'])
 def start(message):
     user_id = message.from_user.id
+    
+    # Проверка на бан
+    if is_banned(user_id):
+        bot.send_message(message.chat.id, "❌ Вы забанены в этом боте!")
+        return
+    
     users.add(user_id)
     
     remaining = check_cooldown(user_id)
@@ -60,10 +131,26 @@ def start(message):
     
     bot.send_message(message.chat.id, "Crack Sbornik - 💥 лучший сборник кряков именно для тебя!", reply_markup=keyboard)
 
+# =============== КОМАНДА /CANCEL ===============
+@bot.message_handler(commands=['cancel'])
+def cancel_report(message):
+    user_id = message.from_user.id
+    if user_id in waiting_for_report:
+        del waiting_for_report[user_id]
+        bot.reply_to(message, "❌ Отправка жалобы отменена.")
+    else:
+        bot.reply_to(message, "❌ У вас нет активной жалобы.")
+
 # =============== КНОПКА РЕПОРТ ===============
 @bot.callback_query_handler(func=lambda call: call.data == "report")
 def report_button(call):
     user_id = call.from_user.id
+    
+    # Проверка на бан
+    if is_banned(user_id):
+        bot.answer_callback_query(call.id, "❌ Вы забанены!", show_alert=True)
+        return
+    
     users.add(user_id)
     
     remaining = check_cooldown(user_id)
@@ -78,16 +165,6 @@ def report_button(call):
     waiting_for_report[user_id] = True
     
     bot.send_message(call.message.chat.id, "⚙️ Отправьте сообщение с жалобой.\n\nПример: *ссылка на софт не работает*\n\n(Вы можете отменить командой /cancel)", parse_mode="Markdown")
-
-# =============== ОТМЕНА ЖАЛОБЫ ===============
-@bot.message_handler(commands=['cancel'])
-def cancel_report(message):
-    user_id = message.from_user.id
-    if user_id in waiting_for_report:
-        del waiting_for_report[user_id]
-        bot.reply_to(message, "❌ Отправка жалобы отменена.")
-    else:
-        bot.reply_to(message, "❌ У вас нет активной жалобы.")
 
 # =============== ОБРАБОТКА ТЕКСТА ЖАЛОБЫ ===============
 @bot.message_handler(func=lambda message: message.text and message.from_user.id in waiting_for_report)
@@ -162,7 +239,10 @@ def admin_panel(message):
     btn3 = types.InlineKeyboardButton("👥 Пользователи", callback_data="admin_users")
     btn4 = types.InlineKeyboardButton("📢 Рассылка", callback_data="admin_broadcast")
     btn5 = types.InlineKeyboardButton("🖼 Сменить картинку", callback_data="admin_change_image")
-    keyboard.add(btn1, btn2, btn3, btn4, btn5)
+    btn6 = types.InlineKeyboardButton("🚫 Забанить пользователя", callback_data="admin_ban")
+    btn7 = types.InlineKeyboardButton("✅ Разбанить пользователя", callback_data="admin_unban")
+    btn8 = types.InlineKeyboardButton("📋 Список забаненных", callback_data="admin_banlist")
+    keyboard.add(btn1, btn2, btn3, btn4, btn5, btn6, btn7, btn8)
     
     bot.send_message(message.chat.id, "🔧 Админ-панель", reply_markup=keyboard)
 
@@ -172,6 +252,12 @@ def user_callback(call):
     global download_count
     
     user_id = call.from_user.id
+    
+    # Проверка на бан
+    if is_banned(user_id):
+        bot.answer_callback_query(call.id, "❌ Вы забанены!", show_alert=True)
+        return
+    
     users.add(user_id)
     
     remaining = check_cooldown(user_id)
@@ -224,6 +310,21 @@ def admin_callback(call):
     elif call.data == "admin_broadcast":
         msg = bot.send_message(call.message.chat.id, "📢 Введите текст для рассылки:")
         bot.register_next_step_handler(msg, broadcast)
+    
+    elif call.data == "admin_ban":
+        msg = bot.send_message(call.message.chat.id, "🚫 Введите ID пользователя для бана:")
+        bot.register_next_step_handler(msg, ban_user)
+    
+    elif call.data == "admin_unban":
+        msg = bot.send_message(call.message.chat.id, "✅ Введите ID пользователя для разбана:")
+        bot.register_next_step_handler(msg, unban_user)
+    
+    elif call.data == "admin_banlist":
+        if blacklist:
+            ban_list = "\n".join([str(uid) for uid in blacklist])
+            bot.send_message(call.message.chat.id, f"📋 **Забаненные пользователи:**\n\n{ban_list}", parse_mode="Markdown")
+        else:
+            bot.send_message(call.message.chat.id, "📋 Чёрный список пуст.")
 
 def change_link(message):
     global SOFT_LINK
@@ -243,6 +344,9 @@ def broadcast(message):
     bot.send_message(message.chat.id, "📢 Начинаю рассылку...")
     
     for user_id in users:
+        # Пропускаем забаненных
+        if is_banned(user_id):
+            continue
         try:
             bot.send_message(user_id, f"📢 Новость:\n\n{text}")
             success += 1
@@ -272,6 +376,9 @@ def health():
 
 # =============== ЗАПУСК ===============
 if __name__ == "__main__":
+    # Загружаем чёрный список
+    load_blacklist()
+    
     # Удаляем старый webhook
     try:
         bot.remove_webhook()
