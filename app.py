@@ -5,7 +5,7 @@ from flask import Flask, request
 import telebot
 from telebot import types
 
-TOKEN = "8773898221:AAGy67kpPvmxiHWCMagPdljvKWWX9fxz-FI"
+TOKEN = "8294974465:AAFfeR0krjHmDUwdQm7rO5N6VfnV8ZvFrOI"
 SOFT_LINK = "https://www.mediafire.com/file/aulm7t7mu6388sc/zenin_crack.exe/file"
 IMAGE_URL = "https://i.ibb.co/vxLfXLY4/gg.png"
 
