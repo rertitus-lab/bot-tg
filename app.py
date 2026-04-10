@@ -43,43 +43,42 @@ def report_message(message):
         user_name = message.from_user.first_name
         user_username = f"@{message.from_user.username}" if message.from_user.username else "нет username"
         
-        # Получаем текст жалобы (всё, что после /report)
+        # Получаем текст жалобы
         report_text = message.text.replace('/report', '').strip()
         
         if not report_text:
-            bot.reply_to(message, "❌ Пожалуйста, напишите жалобу после команды.\n\nПример: `/report ссылка не работает`", parse_mode="Markdown")
+            bot.reply_to(message, "❌ Напишите жалобу после команды.\n\nПример: /report ссылка не работает")
             return
         
-        # Проверяем, может ли бот писать админу (отправляем тестовое действие)
+        # Пробуем отправить тестовое действие админу
         try:
             bot.send_chat_action(ADMIN_ID, 'typing')
-        except Exception as e:
-            bot.reply_to(message, f"⚠️ Ошибка: администратор ещё не начал диалог с ботом.\n\nПожалуйста, сообщите администратору, чтобы он написал боту команду /start")
-            print(f"Бот не может писать админу: {e}")
+        except:
+            bot.reply_to(message, "⚠️ Администратор ещё не начал диалог с ботом. Сообщите ему, чтобы он написал /start")
             return
         
-        # Формируем сообщение для админа
-        admin_message = f"📢 **НОВАЯ ЖАЛОБА!**\n\n"
-        admin_message += f"👤 **От:** {user_name}\n"
-        admin_message += f"🆔 **ID:** `{user_id}`\n"
-        admin_message += f"📱 **Username:** {user_username}\n"
-        admin_message += f"📝 **Текст жалобы:**\n{report_text}\n"
-        admin_message += f"⏰ **Время:** {time.strftime('%Y-%m-%d %H:%M:%S')}"
+        # Отправляем жалобу админу (БЕЗ Markdown)
+        admin_message = f"📢 НОВАЯ ЖАЛОБА!\n\n"
+        admin_message += f"👤 От: {user_name}\n"
+        admin_message += f"🆔 ID: {user_id}\n"
+        admin_message += f"📱 Username: {user_username}\n"
+        admin_message += f"📝 Текст жалобы:\n{report_text}\n"
+        admin_message += f"⏰ Время: {time.strftime('%Y-%m-%d %H:%M:%S')}"
         
-        # Отправляем жалобу админу
-        bot.send_message(ADMIN_ID, admin_message, parse_mode="Markdown")
+        bot.send_message(ADMIN_ID, admin_message)
         
-        # Кнопка для быстрого ответа пользователю
+        # Кнопка для ответа
         keyboard = types.InlineKeyboardMarkup()
         keyboard.add(types.InlineKeyboardButton("💬 Ответить пользователю", callback_data=f"reply_{user_id}"))
         bot.send_message(ADMIN_ID, "🔧 Действия:", reply_markup=keyboard)
         
         # Подтверждение пользователю
-        bot.reply_to(message, "✅ Ваша жалоба отправлена администратору! Мы рассмотрим её в ближайшее время.")
+        bot.reply_to(message, "✅ Ваша жалоба отправлена администратору!")
         
     except Exception as e:
-        bot.reply_to(message, f"❌ Ошибка при отправке жалобы: {str(e)[:100]}")
-        print(f"Ошибка в report_message: {e}")
+        error_text = str(e)[:100]
+        bot.reply_to(message, f"❌ Ошибка: {error_text}")
+        print(f"Ошибка в report: {e}")
 
 # =============== ОТВЕТ ПОЛЬЗОВАТЕЛЮ ОТ АДМИНА ===============
 @bot.callback_query_handler(func=lambda call: call.data.startswith('reply_'))
@@ -91,16 +90,16 @@ def reply_to_user(call):
     user_id = int(call.data.split('_')[1])
     bot.answer_callback_query(call.id)
     
-    msg = bot.send_message(call.message.chat.id, f"✏️ Введите ответ для пользователя с ID `{user_id}`:", parse_mode="Markdown")
+    msg = bot.send_message(call.message.chat.id, f"✏️ Введите ответ для пользователя (ID: {user_id}):")
     bot.register_next_step_handler(msg, lambda m: send_reply_to_user(m, user_id))
 
 def send_reply_to_user(message, user_id):
     reply_text = message.text.strip()
     try:
-        bot.send_message(user_id, f"📢 **Ответ администратора:**\n\n{reply_text}", parse_mode="Markdown")
+        bot.send_message(user_id, f"📢 Ответ администратора:\n\n{reply_text}")
         bot.send_message(message.chat.id, f"✅ Ответ отправлен пользователю {user_id}")
     except Exception as e:
-        bot.send_message(message.chat.id, f"❌ Не удалось отправить ответ. Ошибка: {e}")
+        bot.send_message(message.chat.id, f"❌ Ошибка: {e}")
 
 # =============== КОМАНДА /START ===============
 @bot.message_handler(commands=['start'])
@@ -138,7 +137,7 @@ def admin_panel(message):
     btn5 = types.InlineKeyboardButton("🖼 Сменить картинку", callback_data="admin_change_image")
     keyboard.add(btn1, btn2, btn3, btn4, btn5)
     
-    bot.send_message(message.chat.id, "🔧 **Админ-панель**", parse_mode="Markdown", reply_markup=keyboard)
+    bot.send_message(message.chat.id, "🔧 Админ-панель", reply_markup=keyboard)
 
 # =============== ОБЫЧНЫЕ КНОПКИ ===============
 @bot.callback_query_handler(func=lambda call: call.data in ["download", "more", "share"])
@@ -158,7 +157,7 @@ def user_callback(call):
     if call.data == "download":
         download_count += 1
         bot.answer_callback_query(call.id, "✅ Ссылка отправлена!")
-        bot.send_message(call.message.chat.id, f"🔗 **Ссылка:**\n{SOFT_LINK}", parse_mode="Markdown")
+        bot.send_message(call.message.chat.id, f"🔗 Ссылка для скачивания:\n{SOFT_LINK}")
     
     elif call.data == "more":
         bot.answer_callback_query(call.id, "📸 Картинка отправлена!")
@@ -166,7 +165,7 @@ def user_callback(call):
     
     elif call.data == "share":
         bot.answer_callback_query(call.id)
-        bot.send_message(call.message.chat.id, f"👥 **Поделиться:**\n\nhttps://t.me/{bot.get_me().username}", parse_mode="Markdown")
+        bot.send_message(call.message.chat.id, f"👥 Поделиться ботом:\n\nhttps://t.me/{bot.get_me().username}")
 
 # =============== АДМИН-ОБРАБОТЧИКИ ===============
 @bot.callback_query_handler(func=lambda call: call.data.startswith('admin_'))
@@ -182,21 +181,21 @@ def admin_callback(call):
     bot.answer_callback_query(call.id)
     
     if call.data == "admin_stats":
-        bot.send_message(call.message.chat.id, f"📊 **Статистика:**\n\n📥 Скачиваний: {download_count}\n👥 Пользователей: {len(users)}", parse_mode="Markdown")
+        bot.send_message(call.message.chat.id, f"📊 Статистика:\n\n📥 Скачиваний: {download_count}\n👥 Пользователей: {len(users)}")
     
     elif call.data == "admin_users":
-        bot.send_message(call.message.chat.id, f"👥 **Всего пользователей:** {len(users)}")
+        bot.send_message(call.message.chat.id, f"👥 Всего пользователей: {len(users)}")
     
     elif call.data == "admin_change_link":
-        msg = bot.send_message(call.message.chat.id, "📝 **Отправьте новую ссылку:**", parse_mode="Markdown")
+        msg = bot.send_message(call.message.chat.id, "📝 Отправьте новую ссылку:")
         bot.register_next_step_handler(msg, change_link)
     
     elif call.data == "admin_change_image":
-        msg = bot.send_message(call.message.chat.id, "🖼 **Отправьте новую ссылку на картинку:**", parse_mode="Markdown")
+        msg = bot.send_message(call.message.chat.id, "🖼 Отправьте новую ссылку на картинку:")
         bot.register_next_step_handler(msg, change_image)
     
     elif call.data == "admin_broadcast":
-        msg = bot.send_message(call.message.chat.id, "📢 **Введите текст для рассылки:**", parse_mode="Markdown")
+        msg = bot.send_message(call.message.chat.id, "📢 Введите текст для рассылки:")
         bot.register_next_step_handler(msg, broadcast)
 
 def change_link(message):
@@ -214,17 +213,17 @@ def broadcast(message):
     success = 0
     fail = 0
     
-    bot.send_message(message.chat.id, "📢 **Начинаю рассылку...**", parse_mode="Markdown")
+    bot.send_message(message.chat.id, "📢 Начинаю рассылку...")
     
     for user_id in users:
         try:
-            bot.send_message(user_id, f"📢 **Новость:**\n\n{text}", parse_mode="Markdown")
+            bot.send_message(user_id, f"📢 Новость:\n\n{text}")
             success += 1
         except:
             fail += 1
         time.sleep(0.05)
     
-    bot.send_message(message.chat.id, f"✅ **Рассылка завершена!**\n\n📨 Доставлено: {success}\n❌ Ошибок: {fail}")
+    bot.send_message(message.chat.id, f"✅ Рассылка завершена!\n\n📨 Доставлено: {success}\n❌ Ошибок: {fail}")
 
 # =============== WEBHOOK ДЛЯ RENDER ===============
 @app.route(f'/{TOKEN}', methods=['POST'])
