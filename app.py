@@ -1,7 +1,7 @@
 import os
 import threading
 import time
-from flask import Flask
+from flask import Flask, request
 import telebot
 from telebot import types
 
@@ -12,7 +12,6 @@ IMAGE_URL = "https://i.ibb.co/vxLfXLY4/gg.png"
 bot = telebot.TeleBot(TOKEN)
 app = Flask(__name__)
 
-# Словарь для хранения времени последнего запроса
 user_last_use = {}
 
 def check_cooldown(user_id):
@@ -32,7 +31,7 @@ def start(message):
     remaining = check_cooldown(user_id)
     
     if remaining > 0:
-        bot.send_message(message.chat.id, f"⏳ Подожди {remaining} секунд перед повторным использованием /start!")
+        bot.send_message(message.chat.id, f"⏳ Подожди {remaining} секунд!")
         return
     
     update_cooldown(user_id)
@@ -62,6 +61,16 @@ def callback(call):
     
     bot.answer_callback_query(call.id)
 
+# Используем Webhook вместо polling (избегает конфликта 409)
+@app.route('/webhook', methods=['POST'])
+def webhook():
+    if request.headers.get('content-type') == 'application/json':
+        json_string = request.get_data().decode('utf-8')
+        update = telebot.types.Update.de_json(json_string)
+        bot.process_new_updates([update])
+        return 'OK', 200
+    return 'Bad Request', 400
+
 @app.route('/')
 def index():
     return "Bot is running!"
@@ -70,15 +79,14 @@ def index():
 def health():
     return "OK"
 
-def run_bot():
-    try:
-        bot.infinity_polling()
-    except Exception as e:
-        print(f"Ошибка: {e}")
-        time.sleep(5)
-        run_bot()
-
 if __name__ == "__main__":
-    threading.Thread(target=run_bot).start()
+    # Удаляем старые webhook
+    bot.remove_webhook()
+    time.sleep(1)
+    # Устанавливаем новый webhook
+    webhook_url = f"https://bot-tg-1-tw5w.onrender.com/webhook"
+    bot.set_webhook(url=webhook_url)
+    print(f"✅ Webhook установлен: {webhook_url}")
+    
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
