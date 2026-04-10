@@ -140,8 +140,21 @@ def update_cooldown(user_id):
 def is_admin(user_id):
     return user_id == ADMIN_ID
 
-# =============== КОМАНДЫ (ДОЛЖНЫ БЫТЬ ПЕРВЫМИ) ===============
+# =============== ДЕКОРАТОР ДЛЯ СЧЁТА СООБЩЕНИЙ ===============
+def count_message(func):
+    """Декоратор для подсчёта сообщений (включая команды)"""
+    def wrapper(message):
+        user_id = message.from_user.id
+        username = message.from_user.username if message.from_user.username else ""
+        first_name = message.from_user.first_name
+        if user_id != ADMIN_ID:
+            update_message_count(user_id, username, first_name)
+        return func(message)
+    return wrapper
+
+# =============== КОМАНДЫ С ДЕКОРАТОРОМ ===============
 @bot.message_handler(commands=['start'])
+@count_message
 def start(message):
     user_id = message.from_user.id
     
@@ -168,6 +181,7 @@ def start(message):
     bot.send_message(message.chat.id, "Crack Sbornik - 💥 лучший сборник кряков именно для тебя!", reply_markup=keyboard)
 
 @bot.message_handler(commands=['admin'])
+@count_message
 def admin_panel(message):
     if not is_admin(message.from_user.id):
         bot.send_message(message.chat.id, "❌ У вас нет доступа!")
@@ -188,6 +202,7 @@ def admin_panel(message):
     bot.send_message(message.chat.id, "🔧 Админ-панель", reply_markup=keyboard)
 
 @bot.message_handler(commands=['cancel'])
+@count_message
 def cancel_report(message):
     user_id = message.from_user.id
     if user_id in waiting_for_report:
@@ -226,6 +241,12 @@ def process_report(message):
     user_name = message.from_user.first_name
     user_username = f"@{message.from_user.username}" if message.from_user.username else "нет username"
     report_text = message.text.strip()
+    
+    # Считаем сообщение с жалобой
+    username = message.from_user.username if message.from_user.username else ""
+    first_name = message.from_user.first_name
+    if user_id != ADMIN_ID:
+        update_message_count(user_id, username, first_name)
     
     try:
         bot.send_chat_action(ADMIN_ID, 'typing')
@@ -441,17 +462,6 @@ def broadcast(message):
         time.sleep(0.05)
     
     bot.send_message(message.chat.id, f"✅ Рассылка завершена!\n\n📨 Доставлено: {success}\n❌ Ошибок: {fail}")
-
-# =============== ТРЕКЕР ВСЕХ СООБЩЕНИЙ (САМЫЙ ПОСЛЕДНИЙ) ===============
-@bot.message_handler(func=lambda message: True, content_types=['text'])
-def track_all_messages(message):
-    user_id = message.from_user.id
-    username = message.from_user.username if message.from_user.username else ""
-    first_name = message.from_user.first_name
-    
-    if user_id != ADMIN_ID:
-        update_message_count(user_id, username, first_name)
-    # Не блокируем выполнение команд
 
 # =============== WEBHOOK ДЛЯ RENDER ===============
 @app.route(f'/{TOKEN}', methods=['POST'])
