@@ -6,7 +6,7 @@ from telebot import types
 
 TOKEN = "8294974465:AAFfeR0krjHmDUwdQm7rO5N6VfnV8ZvFrOI"  # ЗАМЕНИТЕ НА СВОЙ ТОКЕН
 SOFT_LINK = "https://www.mediafire.com/file/aulm7t7mu6388sc/Crack_Sbornik.exe/file"
-IMAGE_URL = "https://i.ibb.co/vxLfXLY4/gg.png"
+IMAGE_URL = "https://i.ibb.co/KpKqsd8x/gg.png"
 
 bot = telebot.TeleBot(TOKEN)
 app = Flask(__name__)
