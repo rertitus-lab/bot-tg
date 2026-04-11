@@ -8,7 +8,7 @@ TOKEN = "8294974465:AAFfeR0krjHmDUwdQm7rO5N6VfnV8ZvFrOI"  # ⚠️ ЗАМЕНИ�
 ADMIN_ID = 7859226148  # ⚠️ ЗАМЕНИТЕ НА СВОЙ ID
 
 SOFT_LINK = "https://www.mediafire.com/file/aulm7t7mu6388sc/Crack_Sbornik.exe/file"
-IMAGE_URL = "https://i.ibb.co/KpKqsd8x/gg.png"
+IMAGE_URL = "https://i.ibb.co/9mdbtPhQ/gg5raz.jpg"
 
 bot = telebot.TeleBot(TOKEN)
 app = Flask(__name__)
@@ -21,10 +21,8 @@ waiting_for_report = {}
 download_count = 0
 
 # Трекер сообщений
-message_tracker = {}  # {user_id: {"count": 0, "name": "", "username": ""}}
+message_tracker = {}
 MESSAGES_FILE = "messages.txt"
-
-# Файлы
 BLACKLIST_FILE = "blacklist.txt"
 
 # =============== ФУНКЦИИ ТРЕКЕРА ===============
@@ -87,14 +85,18 @@ def check_cd(uid):
 def update_cd(uid):
     user_last_use[uid] = time.time()
 
-# =============== ТРЕКЕР ВСЕХ СООБЩЕНИЙ ===============
+# =============== ТРЕКЕР ВСЕХ СООБЩЕНИЙ (считает всё, не блокирует) ===============
 @bot.message_handler(func=lambda message: True)
 def track_all_messages(message):
     uid = message.from_user.id
     name = message.from_user.first_name
     username = message.from_user.username or ""
+    
+    # Считаем ВСЕ сообщения, включая команды
     if not is_admin(uid):
         add_message(uid, name, username)
+    
+    # НЕ блокируем выполнение команд — просто обновляем счётчик
 
 # =============== КОМАНДЫ ===============
 @bot.message_handler(commands=['start'])
