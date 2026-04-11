@@ -20,9 +20,45 @@ blacklist = set()
 waiting_for_report = {}
 download_count = 0
 
+# Трекер сообщений
+message_tracker = {}  # {user_id: {"count": 0, "name": "", "username": ""}}
+MESSAGES_FILE = "messages.txt"
+
 # Файлы
 BLACKLIST_FILE = "blacklist.txt"
 
+# =============== ФУНКЦИИ ТРЕКЕРА ===============
+def save_messages():
+    with open(MESSAGES_FILE, 'w') as f:
+        for uid, data in message_tracker.items():
+            f.write(f"{uid}|{data['count']}|{data.get('name', '')}|{data.get('username', '')}\n")
+
+def load_messages():
+    global message_tracker
+    if os.path.exists(MESSAGES_FILE):
+        with open(MESSAGES_FILE, 'r') as f:
+            for line in f:
+                if line.strip():
+                    parts = line.strip().split('|')
+                    if len(parts) >= 2:
+                        uid = int(parts[0])
+                        count = int(parts[1])
+                        name = parts[2] if len(parts) > 2 else ""
+                        username = parts[3] if len(parts) > 3 else ""
+                        message_tracker[uid] = {"count": count, "name": name, "username": username}
+    print(f"✅ Загружен трекер: {len(message_tracker)} пользователей")
+
+def add_message(uid, name, username):
+    if uid in message_tracker:
+        message_tracker[uid]["count"] += 1
+    else:
+        message_tracker[uid] = {"count": 1, "name": name, "username": username or ""}
+    save_messages()
+
+def get_messages(uid):
+    return message_tracker.get(uid, {}).get("count", 0)
+
+# =============== ФУНКЦИИ ЧС ===============
 def save_blacklist():
     with open(BLACKLIST_FILE, 'w') as f:
         for uid in blacklist:
@@ -33,6 +69,7 @@ def load_blacklist():
     if os.path.exists(BLACKLIST_FILE):
         with open(BLACKLIST_FILE, 'r') as f:
             blacklist = set(int(l.strip()) for l in f if l.strip())
+    print(f"✅ Загружен ЧС: {len(blacklist)} пользователей")
 
 def is_banned(uid):
     return uid in blacklist
@@ -49,6 +86,15 @@ def check_cd(uid):
 
 def update_cd(uid):
     user_last_use[uid] = time.time()
+
+# =============== ТРЕКЕР ВСЕХ СООБЩЕНИЙ ===============
+@bot.message_handler(func=lambda message: True)
+def track_all_messages(message):
+    uid = message.from_user.id
+    name = message.from_user.first_name
+    username = message.from_user.username or ""
+    if not is_admin(uid):
+        add_message(uid, name, username)
 
 # =============== КОМАНДЫ ===============
 @bot.message_handler(commands=['start'])
@@ -90,7 +136,8 @@ def admin_command(message):
         types.InlineKeyboardButton("🖼 Сменить картинку", callback_data="admin_change_image"),
         types.InlineKeyboardButton("🚫 Забанить пользователя", callback_data="admin_ban"),
         types.InlineKeyboardButton("✅ Разбанить пользователя", callback_data="admin_unban"),
-        types.InlineKeyboardButton("📋 Список забаненных", callback_data="admin_banlist")
+        types.InlineKeyboardButton("📋 Список забаненных", callback_data="admin_banlist"),
+        types.InlineKeyboardButton("📊 Трекер сообщений", callback_data="admin_tracker")
     )
     bot.send_message(message.chat.id, "🔧 Админ-панель", reply_markup=kb)
 
@@ -295,6 +342,17 @@ def admin_callback(call):
             bot.send_message(call.message.chat.id, f"📋 **Забаненные:**\n\n{lst}", parse_mode="Markdown")
         else:
             bot.send_message(call.message.chat.id, "📋 Чёрный список пуст.")
+    
+    elif call.data == "admin_tracker":
+        if not message_tracker:
+            bot.send_message(call.message.chat.id, "📊 Нет данных о сообщениях.")
+            return
+        sorted_users = sorted(message_tracker.items(), key=lambda x: x[1]["count"], reverse=True)[:20]
+        text = "📊 **Топ пользователей по сообщениям:**\n\n"
+        for i, (uid, data) in enumerate(sorted_users, 1):
+            name = data.get('username') or data.get('name', str(uid))[:15]
+            text += f"{i}. {name} — {data['count']} сообщений\n"
+        bot.send_message(call.message.chat.id, text, parse_mode="Markdown")
 
 # =============== WEBHOOK ===============
 @app.route(f'/{TOKEN}', methods=['POST'])
@@ -310,8 +368,9 @@ def index():
 
 if __name__ == "__main__":
     load_blacklist()
+    load_messages()
     
-    print(f"✅ Загружено: {len(blacklist)} в ЧС")
+    print(f"✅ Загружено: {len(blacklist)} в ЧС, {len(message_tracker)} в трекере")
     
     bot.remove_webhook()
     time.sleep(1)
