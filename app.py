@@ -296,6 +296,7 @@ def stats_button(call):
     stats_text += f"• +10 монет за каждое скачивание\n"
     stats_text += f"• +50 монет за отправку жалобы\n"
     stats_text += f"• +100 монет за регистрацию\n"
+    stats_text += f"\n🔝 **VIP КРЯКИ** — 1250 монет"
     
     bot.send_message(call.message.chat.id, stats_text, parse_mode="Markdown")
 
