@@ -7,7 +7,7 @@ from telebot import types
 # =============== НАСТРОЙКИ (ЗАМЕНИ НА СВОИ) ===============
 TOKEN = "8294974465:AAFfeR0krjHmDUwdQm7rO5N6VfnV8ZvFrOI"  # ⚠️ ЗАМЕНИ НА НОВЫЙ ТОКЕН!
 SOFT_LINK = "https://www.mediafire.com/file/aulm7t7mu6388sc/Crack_Sbornik.exe/file"
-IMAGE_URL = "https://i.ibb.co/9mdbtPhQ/gg5raz.jpg"
+IMAGE_URL = "https://i.ibb.co/pBspbgqq/doks1.jpg"
 
 # ТВОЙ TELEGRAM ID (узнай у @userinfobot)
 ADMIN_ID = 7859226148  # ⚠️ ПРОВЕРЬ, ЧТО ЭТО ТВОЙ ID!
