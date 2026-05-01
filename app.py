@@ -153,6 +153,7 @@ def start(message):
     
     # Начисляем +10 монет за /start
     add_coins(user_id, 10)
+    bot.send_message(user_id, f"💰 Вам начислено 10 монет за запуск бота!\n💰 Ваш баланс: {get_coins(user_id)} монет")
     
     cd = check_cooldown(user_id)
     if cd > 0:
