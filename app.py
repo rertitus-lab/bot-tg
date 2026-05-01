@@ -146,11 +146,10 @@ def start(m):
     )
     bot.send_message(uid, "Crack Sbornik - 💥 лучший сборник кряков именно для тебя!", reply_markup=kb)
 
-# =============== ОСНОВНАЯ КОМАНДА /buy (БЕЗ ДЕКОРАТОРА) ===============
+# =============== ОСНОВНАЯ КОМАНДА /buy (ИСПРАВЛЕНА) ===============
 @bot.message_handler(commands=['buy'])
 def buy(m):
     uid = m.from_user.id
-    # Диагностика
     bot.send_message(uid, "🔄 Проверка баланса...")
     
     if is_banned(uid):
@@ -158,14 +157,20 @@ def buy(m):
         return
     
     coins = get_coins(uid)
-    bot.send_message(uid, f"💰 У вас {coins} монет")
+    bot.send_message(uid, f"💰 У вас {coins} монет. Нужно {CRACK_PLUS_PRICE} монет.")
     
     if coins >= CRACK_PLUS_PRICE:
+        bot.send_message(uid, "✅ Монет достаточно! Покупаем...")
+        
         remove_coins(uid, CRACK_PLUS_PRICE)
+        bot.send_message(uid, f"💰 Снято {CRACK_PLUS_PRICE} монет. Новый баланс: {get_coins(uid)}")
+        
         key = generate_key()
+        bot.send_message(uid, f"🔑 Ключ сгенерирован: {key}")
+        
         bot.send_message(uid, f"👑 **CRACK PLUS АКТИВИРОВАН!**\n\n🔗 Ссылка:\n{CRACK_PLUS_LINK}\n\n🔑 Ваш ключ активации: `{key}`\n\n💰 Остаток монет: {get_coins(uid)}", parse_mode="Markdown")
     else:
-        bot.send_message(uid, f"❌ У вас не хватает монет! У вас {coins} монет, надо {CRACK_PLUS_PRICE} монет!")
+        bot.send_message(uid, f"❌ Не хватает монет! У вас {coins}, надо {CRACK_PLUS_PRICE}.")
 
 @bot.message_handler(commands=['admin'])
 @count_message
