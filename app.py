@@ -150,27 +150,21 @@ def start(m):
 @bot.message_handler(commands=['buy'])
 def buy(m):
     uid = m.from_user.id
-    bot.send_message(uid, "🔄 Проверка баланса...")
     
     if is_banned(uid):
         bot.send_message(uid, "❌ Вы забанены!")
         return
     
     coins = get_coins(uid)
-    bot.send_message(uid, f"💰 У вас {coins} монет. Нужно {CRACK_PLUS_PRICE} монет.")
     
     if coins >= CRACK_PLUS_PRICE:
-        bot.send_message(uid, "✅ Монет достаточно! Покупаем...")
-        
         remove_coins(uid, CRACK_PLUS_PRICE)
-        bot.send_message(uid, f"💰 Снято {CRACK_PLUS_PRICE} монет. Новый баланс: {get_coins(uid)}")
-        
         key = generate_key()
-        bot.send_message(uid, f"🔑 Ключ сгенерирован: {key}")
         
-        bot.send_message(uid, f"👑 **CRACK PLUS АКТИВИРОВАН!**\n\n🔗 Ссылка:\n{CRACK_PLUS_LINK}\n\n🔑 Ваш ключ активации: `{key}`\n\n💰 Остаток монет: {get_coins(uid)}", parse_mode="Markdown")
+        # ПРОСТОЕ СООБЩЕНИЕ С ССЫЛКОЙ И КЛЮЧОМ
+        bot.send_message(uid, f"🎉 CRACK PLUS КУПЛЕН!\n\n🔗 ссылка на crack plus:\n{CRACK_PLUS_LINK}\n\n🔑 ключ активации: {key}\n\n💰 Остаток монет: {get_coins(uid)}")
     else:
-        bot.send_message(uid, f"❌ Не хватает монет! У вас {coins}, надо {CRACK_PLUS_PRICE}.")
+        bot.send_message(uid, f"❌ Не хватает монет! У вас {coins}, надо {CRACK_PLUS_PRICE}")
 
 @bot.message_handler(commands=['admin'])
 @count_message
