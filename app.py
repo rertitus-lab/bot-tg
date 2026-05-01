@@ -265,7 +265,7 @@ def crack_plus_callback(call):
         bot.answer_callback_query(call.id, "❌ Вы забанены!", True)
         return
     bot.answer_callback_query(call.id)
-    bot.send_message(user_id, "💸 **CRACK PLUS**\n\nнапишите команду /buy чтобы купить crack plus!\n\nинфо: за одно сообщение /start +10 монет", parse_mode="Markdown")
+    bot.send_message(user_id, "💸 **CRACK PLUS**\n\nнапишите команду /buy чтобы купить crack plus!\n\nинфо: за одно сообщение /start +10 монет\n\nCrack Plus дает лучшую оптимизацию, больше функций и гибкие настройки лаунчера и чита!", parse_mode="Markdown")
 
 # =============== ОБРАБОТКА ЖАЛОБ ===============
 @bot.message_handler(func=lambda m: m.from_user.id in waiting_for_report)
