@@ -118,6 +118,11 @@ def count_message(func):
         return func(m)
     return wrapper
 
+# =============== ДИАГНОСТИКА ===============
+@bot.message_handler(commands=['test'])
+def test_command(m):
+    bot.send_message(m.chat.id, "✅ Бот работает! Команды: /start, /buy, /admin")
+
 # =============== КОМАНДЫ ===============
 @bot.message_handler(commands=['start'])
 @count_message
@@ -141,15 +146,19 @@ def start(m):
     )
     bot.send_message(uid, "Crack Sbornik - 💥 лучший сборник кряков именно для тебя!", reply_markup=kb)
 
+# =============== ОСНОВНАЯ КОМАНДА /buy (БЕЗ ДЕКОРАТОРА) ===============
 @bot.message_handler(commands=['buy'])
-@count_message
 def buy(m):
     uid = m.from_user.id
+    # Диагностика
+    bot.send_message(uid, "🔄 Проверка баланса...")
+    
     if is_banned(uid):
         bot.send_message(uid, "❌ Вы забанены!")
         return
     
     coins = get_coins(uid)
+    bot.send_message(uid, f"💰 У вас {coins} монет")
     
     if coins >= CRACK_PLUS_PRICE:
         remove_coins(uid, CRACK_PLUS_PRICE)
@@ -385,7 +394,7 @@ if __name__ == "__main__":
     load_messages()
     load_coins()
     print(f"✅ Загружено: {len(coins_data)} кошельков, {len(message_tracker)} в трекере, {len(blacklist)} в ЧС")
-    print(f"✅ Бот запущен! Команды: /start, /buy, /admin")
+    print(f"✅ Бот запущен! Команды: /start, /buy, /admin, /test")
     bot.remove_webhook()
     time.sleep(1)
     webhook_url = f"https://{os.environ.get('RENDER_EXTERNAL_HOSTNAME', 'bot-tg-1-x4tg.onrender.com')}/{TOKEN}"
