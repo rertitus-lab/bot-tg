@@ -119,20 +119,8 @@ def update_cooldown(user_id):
 def is_admin(user_id):
     return user_id == ADMIN_ID
 
-# =============== ДЕКОРАТОР ДЛЯ СЧЁТА ===============
-def count_message(func):
-    def wrapper(message):
-        user_id = message.from_user.id
-        username = message.from_user.username or ""
-        first_name = message.from_user.first_name
-        if user_id != ADMIN_ID:
-            update_message_count(user_id, username, first_name)
-        return func(message)
-    return wrapper
-
 # =============== КОМАНДЫ ===============
 @bot.message_handler(commands=['start'])
-@count_message
 def start(message):
     user_id = message.from_user.id
     if is_banned(user_id):
@@ -147,7 +135,11 @@ def start(message):
     if cd > 0:
         bot.send_message(user_id, f"⏳ Подожди {cd} секунд!")
         return
-    update_cd(user_id)
+    update_cooldown(user_id)
+    
+    # Обновляем трекер сообщений вручную
+    update_message_count(user_id, message.from_user.username or "", message.from_user.first_name)
+    
     keyboard = types.InlineKeyboardMarkup(row_width=2)
     keyboard.add(
         types.InlineKeyboardButton("📥 Скачать софт", callback_data="download"),
@@ -160,7 +152,6 @@ def start(message):
     bot.send_message(user_id, "Crack Sbornik - 💥 лучший сборник кряков именно для тебя!", reply_markup=keyboard)
 
 @bot.message_handler(commands=['admin'])
-@count_message
 def admin_panel(message):
     if not is_admin(message.from_user.id):
         bot.send_message(message.chat.id, "❌ Нет доступа!")
@@ -180,7 +171,6 @@ def admin_panel(message):
     bot.send_message(message.chat.id, "🔧 Админ-панель", reply_markup=keyboard)
 
 @bot.message_handler(commands=['cancel'])
-@count_message
 def cancel_report(message):
     user_id = message.from_user.id
     if user_id in waiting_for_report:
@@ -190,7 +180,6 @@ def cancel_report(message):
         bot.reply_to(message, "❌ Нет активной жалобы")
 
 @bot.message_handler(commands=['buy'])
-@count_message
 def buy_command(message):
     user_id = message.from_user.id
     if is_banned(user_id):
@@ -214,7 +203,7 @@ def download_callback(call):
     if cd > 0:
         bot.answer_callback_query(call.id, f"⏳ {cd} сек!", True)
         return
-    update_cd(user_id)
+    update_cooldown(user_id)
     global download_count
     download_count += 1
     bot.answer_callback_query(call.id, "✅ Ссылка отправлена!", False)
@@ -230,7 +219,7 @@ def more_callback(call):
     if cd > 0:
         bot.answer_callback_query(call.id, f"⏳ {cd} сек!", True)
         return
-    update_cd(user_id)
+    update_cooldown(user_id)
     bot.answer_callback_query(call.id, "📸", False)
     caption_text = "☢️ антивирус может ругаться на софт потому что это кряк ☢️\n\n💰 ВАЖНО: за каждое сообщение /start +10 монет к балансу!"
     bot.send_photo(user_id, IMAGE_URL, caption=caption_text)
@@ -254,7 +243,7 @@ def report_callback(call):
     if cd > 0:
         bot.answer_callback_query(call.id, f"⏳ {cd} сек!", True)
         return
-    update_cd(user_id)
+    update_cooldown(user_id)
     bot.answer_callback_query(call.id)
     waiting_for_report[user_id] = True
     bot.send_message(user_id, "⚙️ Напишите текст жалобы (/cancel для отмены)")
@@ -381,6 +370,16 @@ def unban_user(m):
             bot.send_message(m.chat.id, f"❌ Пользователь {uid} не в ЧС")
     except:
         bot.send_message(m.chat.id, "❌ Ошибка! Введите ID")
+
+# =============== ТРЕКЕР ВСЕХ СООБЩЕНИЙ (НЕ БЛОКИРУЕТ КОМАНДЫ) ===============
+@bot.message_handler(func=lambda message: True)
+def track_all_messages(message):
+    user_id = message.from_user.id
+    # Пропускаем команды, чтобы не мешать
+    if message.text and message.text.startswith('/'):
+        return
+    if user_id != ADMIN_ID:
+        update_message_count(user_id, message.from_user.username or "", message.from_user.first_name)
 
 # =============== АДМИН-КНОПКИ ===============
 @bot.callback_query_handler(func=lambda call: call.data.startswith('admin_'))
