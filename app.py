@@ -171,22 +171,6 @@ def start(message):
     )
     bot.send_message(user_id, "Crack Sbornik - 💥 лучший сборник кряков именно для тебя!", reply_markup=keyboard)
 
-@bot.message_handler(commands=['buy'])
-@count_message
-def buy_command(message):
-    user_id = message.from_user.id
-    if is_banned(user_id):
-        bot.send_message(user_id, "❌ Вы забанены!")
-        return
-    
-    coins = get_coins(user_id)
-    if coins >= CRACK_PLUS_PRICE:
-        remove_coins(user_id, CRACK_PLUS_PRICE)
-        key = generate_activation_key()
-        bot.send_message(user_id, f"👑 **CRACK PLUS АКТИВИРОВАН!**\n\n🔗 Ссылка:\n{CRACK_PLUS_LINK}\n\n🔑 Ваш ключ активации: `{key}`\n\n💰 Остаток монет: {get_coins(user_id)}", parse_mode="Markdown")
-    else:
-        bot.send_message(user_id, f"❌ У вас не хватает монет! У вас {coins} монет, надо {CRACK_PLUS_PRICE} монет!")
-
 @bot.message_handler(commands=['admin'])
 @count_message
 def admin_panel(message):
@@ -283,6 +267,7 @@ def balance_callback(call):
     coins = get_coins(user_id)
     bot.send_message(user_id, f"💰 Ваш баланс: {coins} монет")
 
+# =============== CRACK PLUS (ПОКУПКА ПО КНОПКЕ) ===============
 @bot.callback_query_handler(func=lambda call: call.data == "crack_plus")
 def crack_plus_callback(call):
     user_id = call.from_user.id
@@ -294,8 +279,15 @@ def crack_plus_callback(call):
         bot.answer_callback_query(call.id, f"⏳ {cd} сек!", True)
         return
     update_cooldown(user_id)
-    bot.answer_callback_query(call.id)
-    bot.send_message(user_id, "Напишите /buy чтобы купить Crack Plus!\n\nКоманда /start дает +10 монет к балансу!\n\nCrack Plus дает лучшую оптимизацию, гибкие настройки и больше функций!")
+    
+    coins = get_coins(user_id)
+    if coins >= CRACK_PLUS_PRICE:
+        remove_coins(user_id, CRACK_PLUS_PRICE)
+        key = generate_activation_key()
+        bot.answer_callback_query(call.id, f"✅ Куплено! Снято {CRACK_PLUS_PRICE} монет", False)
+        bot.send_message(user_id, f"👑 **CRACK PLUS АКТИВИРОВАН!**\n\n🔗 Ссылка:\n{CRACK_PLUS_LINK}\n\n🔑 Ваш ключ активации: `{key}`\n\n💰 Остаток монет: {get_coins(user_id)}", parse_mode="Markdown")
+    else:
+        bot.answer_callback_query(call.id, f"❌ У вас {coins} монет, надо {CRACK_PLUS_PRICE}!", True)
 
 # =============== ОБРАБОТКА ЖАЛОБ ===============
 @bot.message_handler(func=lambda m: m.from_user.id in waiting_for_report)
