@@ -10,10 +10,6 @@ SOFT_LINK = "https://www.mediafire.com/file/aulm7t7mu6388sc/Crack_Sbornik.exe/fi
 IMAGE_URL = "https://i.ibb.co/YBXZt30f/ggdoksraz.png"
 ADMIN_ID = 7859226148  # ⚠️ ЗАМЕНИ НА СВОЙ ID
 
-# Система монет
-CRACK_PLUS_PRICE = 2500
-CRACK_PLUS_LINK = "https://www.mediafire.com/file/fh6v3l9v27jh4g7/crack_plus.exe/file"
-
 # =============== ИНИЦИАЛИЗАЦИЯ ===============
 bot = telebot.TeleBot(TOKEN)
 app = Flask(__name__)
@@ -80,7 +76,7 @@ def load_coins():
     if os.path.exists(COINS_FILE):
         with open(COINS_FILE, 'r') as f:
             for line in f:
-                if '|' in line.strip():
+                if '|' in line:
                     uid, coins = line.strip().split('|')
                     coins_data[int(uid)] = int(coins)
     print(f"✅ Загружены монеты: {len(coins_data)} пользователей")
@@ -119,39 +115,42 @@ def update_cooldown(user_id):
 def is_admin(user_id):
     return user_id == ADMIN_ID
 
+# =============== ДЕКОРАТОР ДЛЯ СЧЁТА ===============
+def count_message(func):
+    def wrapper(message):
+        user_id = message.from_user.id
+        username = message.from_user.username or ""
+        first_name = message.from_user.first_name
+        if user_id != ADMIN_ID:
+            update_message_count(user_id, username, first_name)
+        return func(message)
+    return wrapper
+
 # =============== КОМАНДЫ ===============
 @bot.message_handler(commands=['start'])
+@count_message
 def start(message):
     user_id = message.from_user.id
     if is_banned(user_id):
         bot.send_message(user_id, "❌ Вы забанены!")
         return
     users.add(user_id)
-    
-    # Начисляем монеты за /start
-    add_coins(user_id, 10)
-    
     cd = check_cooldown(user_id)
     if cd > 0:
         bot.send_message(user_id, f"⏳ Подожди {cd} секунд!")
         return
     update_cooldown(user_id)
-    
-    # Обновляем трекер сообщений вручную
-    update_message_count(user_id, message.from_user.username or "", message.from_user.first_name)
-    
-    keyboard = types.InlineKeyboardMarkup(row_width=2)
+    keyboard = types.InlineKeyboardMarkup(row_width=1)
     keyboard.add(
         types.InlineKeyboardButton("📥 Скачать софт", callback_data="download"),
         types.InlineKeyboardButton("🎯 Подробнее", callback_data="more"),
         types.InlineKeyboardButton("👥 Поделиться", callback_data="share"),
-        types.InlineKeyboardButton("📢 Репорт", callback_data="report"),
-        types.InlineKeyboardButton("💰 Баланс", callback_data="balance"),
-        types.InlineKeyboardButton("💸 CRACK PLUS", callback_data="crack_plus")
+        types.InlineKeyboardButton("📢 Репорт", callback_data="report")
     )
     bot.send_message(user_id, "Crack Sbornik - 💥 лучший сборник кряков именно для тебя!", reply_markup=keyboard)
 
 @bot.message_handler(commands=['admin'])
+@count_message
 def admin_panel(message):
     if not is_admin(message.from_user.id):
         bot.send_message(message.chat.id, "❌ Нет доступа!")
@@ -166,11 +165,13 @@ def admin_panel(message):
         types.InlineKeyboardButton("🚫 Забанить", callback_data="admin_ban"),
         types.InlineKeyboardButton("✅ Разбанить", callback_data="admin_unban"),
         types.InlineKeyboardButton("📋 Список ЧС", callback_data="admin_banlist"),
-        types.InlineKeyboardButton("📊 Трекер", callback_data="admin_tracker")
+        types.InlineKeyboardButton("📊 Трекер", callback_data="admin_tracker"),
+        types.InlineKeyboardButton("💰 Выдать монеты", callback_data="admin_give_coins")
     )
     bot.send_message(message.chat.id, "🔧 Админ-панель", reply_markup=keyboard)
 
 @bot.message_handler(commands=['cancel'])
+@count_message
 def cancel_report(message):
     user_id = message.from_user.id
     if user_id in waiting_for_report:
@@ -178,19 +179,6 @@ def cancel_report(message):
         bot.reply_to(message, "❌ Отправка жалобы отменена")
     else:
         bot.reply_to(message, "❌ Нет активной жалобы")
-
-@bot.message_handler(commands=['buy'])
-def buy_command(message):
-    user_id = message.from_user.id
-    if is_banned(user_id):
-        bot.send_message(user_id, "❌ Вы забанены!")
-        return
-    coins = get_coins(user_id)
-    if coins < CRACK_PLUS_PRICE:
-        bot.send_message(user_id, f"❌ У вас не хватает монет! У вас {coins} монет. Надо {CRACK_PLUS_PRICE} монет.")
-        return
-    remove_coins(user_id, CRACK_PLUS_PRICE)
-    bot.send_message(user_id, f"🎉 **ПОЗДРАВЛЯЕМ!**\n\nВы купили **CRACK PLUS**! Он даёт:\n✅ большую оптимизацию\n✅ гибкие настройки\n✅ больше функций!\n\n🔗 Ваша ссылка на скачивание:\n{CRACK_PLUS_LINK}\n\n💰 Остаток монет: {get_coins(user_id)}", parse_mode="Markdown")
 
 # =============== КНОПКИ ПОЛЬЗОВАТЕЛЯ ===============
 @bot.callback_query_handler(func=lambda call: call.data == "download")
@@ -219,10 +207,9 @@ def more_callback(call):
     if cd > 0:
         bot.answer_callback_query(call.id, f"⏳ {cd} сек!", True)
         return
-    update_cooldown(user_id)
+    update_cd(user_id)
     bot.answer_callback_query(call.id, "📸", False)
-    caption_text = "☢️ антивирус может ругаться на софт потому что это кряк ☢️\n\n💰 ВАЖНО: за каждое сообщение /start +10 монет к балансу!"
-    bot.send_photo(user_id, IMAGE_URL, caption=caption_text)
+    bot.send_photo(user_id, IMAGE_URL, caption="☢️ антивирус может ругаться на софт потому что это кряк ☢️")
 
 @bot.callback_query_handler(func=lambda call: call.data == "share")
 def share_callback(call):
@@ -243,29 +230,10 @@ def report_callback(call):
     if cd > 0:
         bot.answer_callback_query(call.id, f"⏳ {cd} сек!", True)
         return
-    update_cooldown(user_id)
+    update_cd(user_id)
     bot.answer_callback_query(call.id)
     waiting_for_report[user_id] = True
     bot.send_message(user_id, "⚙️ Напишите текст жалобы (/cancel для отмены)")
-
-@bot.callback_query_handler(func=lambda call: call.data == "balance")
-def balance_callback(call):
-    user_id = call.from_user.id
-    if is_banned(user_id):
-        bot.answer_callback_query(call.id, "❌ Вы забанены!", True)
-        return
-    bot.answer_callback_query(call.id)
-    coins = get_coins(user_id)
-    bot.send_message(user_id, f"💰 **Ваш баланс:** {coins} монет\n\n🎁 За каждое сообщение /start вы получаете +10 монет!", parse_mode="Markdown")
-
-@bot.callback_query_handler(func=lambda call: call.data == "crack_plus")
-def crack_plus_callback(call):
-    user_id = call.from_user.id
-    if is_banned(user_id):
-        bot.answer_callback_query(call.id, "❌ Вы забанены!", True)
-        return
-    bot.answer_callback_query(call.id)
-    bot.send_message(user_id, "💸 **CRACK PLUS**\n\nнапишите команду /buy чтобы купить crack plus!\n\nинфо: за одно сообщение /start +10 монет\n\nCrack Plus дает лучшую оптимизацию, больше функций и гибкие настройки лаунчера и чита!", parse_mode="Markdown")
 
 # =============== ОБРАБОТКА ЖАЛОБ ===============
 @bot.message_handler(func=lambda m: m.from_user.id in waiting_for_report)
@@ -371,18 +339,40 @@ def unban_user(m):
     except:
         bot.send_message(m.chat.id, "❌ Ошибка! Введите ID")
 
-# =============== ТРЕКЕР ВСЕХ СООБЩЕНИЙ (НЕ БЛОКИРУЕТ КОМАНДЫ) ===============
-@bot.message_handler(func=lambda message: True)
-def track_all_messages(message):
-    user_id = message.from_user.id
-    # Пропускаем команды, чтобы не мешать
-    if message.text and message.text.startswith('/'):
+# =============== ВЫДАЧА МОНЕТ ===============
+@bot.callback_query_handler(func=lambda call: call.data == "admin_give_coins")
+def give_coins_menu(call):
+    if not is_admin(call.from_user.id):
+        bot.answer_callback_query(call.id, "❌ Нет доступа!", True)
         return
-    if user_id != ADMIN_ID:
-        update_message_count(user_id, message.from_user.username or "", message.from_user.first_name)
+    bot.answer_callback_query(call.id)
+    msg = bot.send_message(call.message.chat.id, "💰 Введите ID пользователя и сумму монет через пробел\n\nПример: `123456789 500`\nСумма от 1 до 100000", parse_mode="Markdown")
+    bot.register_next_step_handler(msg, process_give_coins)
+
+def process_give_coins(message):
+    try:
+        parts = message.text.strip().split()
+        if len(parts) != 2:
+            bot.send_message(message.chat.id, "❌ Ошибка! Введите ID и сумму через пробел\nПример: `123456789 500`", parse_mode="Markdown")
+            return
+        user_id = int(parts[0])
+        amount = int(parts[1])
+        if amount < 1 or amount > 100000:
+            bot.send_message(message.chat.id, "❌ Сумма должна быть от 1 до 100000 монет!")
+            return
+        add_coins(user_id, amount)
+        bot.send_message(message.chat.id, f"✅ Пользователю `{user_id}` выдано {amount} монет!\n💰 Баланс: {get_coins(user_id)}", parse_mode="Markdown")
+        try:
+            bot.send_message(user_id, f"💰 Вам начислено {amount} монет!\n💰 Ваш баланс: {get_coins(user_id)}")
+        except:
+            pass
+    except ValueError:
+        bot.send_message(message.chat.id, "❌ Ошибка! Введите ID (число) и сумму (число)")
+    except Exception as e:
+        bot.send_message(message.chat.id, f"❌ Ошибка: {e}")
 
 # =============== АДМИН-КНОПКИ ===============
-@bot.callback_query_handler(func=lambda call: call.data.startswith('admin_'))
+@bot.callback_query_handler(func=lambda call: call.data.startswith('admin_') and call.data != "admin_give_coins")
 def admin_callback(call):
     if not is_admin(call.from_user.id):
         bot.answer_callback_query(call.id, "❌ Нет доступа!", True)
