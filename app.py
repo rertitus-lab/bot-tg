@@ -31,10 +31,16 @@ BLACKLIST_FILE = "blacklist.txt"
 MESSAGE_FILE = "messages.txt"
 COINS_FILE = "coins.txt"
 
-# =============== ФУНКЦИИ ===============
+# =============== ФУНКЦИЯ ГЕНЕРАЦИИ КЛЮЧА ===============
 def generate_key():
-    return '-'.join(''.join(random.choices(string.ascii_uppercase + string.digits, k=4)) for _ in range(4))
+    """Генерирует случайный ключ в формате XXXX-XXXX-XXXX-XXXX"""
+    parts = []
+    for _ in range(4):
+        part = ''.join(random.choices(string.ascii_uppercase + string.digits, k=4))
+        parts.append(part)
+    return '-'.join(parts)
 
+# =============== ФУНКЦИИ ЗАГРУЗКИ/СОХРАНЕНИЯ ===============
 def load_blacklist():
     global blacklist
     if os.path.exists(BLACKLIST_FILE):
@@ -74,6 +80,7 @@ def save_coins():
         for uid, val in coins_data.items():
             f.write(f"{uid}|{val}\n")
 
+# =============== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ===============
 def is_banned(uid): return uid in blacklist
 def is_admin(uid): return uid == ADMIN_ID
 def get_coins(uid): return coins_data.get(uid, 0)
@@ -111,11 +118,6 @@ def count_message(func):
         return func(m)
     return wrapper
 
-# =============== ДИАГНОСТИКА ===============
-@bot.message_handler(commands=['test'])
-def test_command(m):
-    bot.send_message(m.chat.id, "✅ Команды работают! Бот активен.")
-
 # =============== КОМАНДЫ ===============
 @bot.message_handler(commands=['start'])
 @count_message
@@ -148,14 +150,13 @@ def buy(m):
         return
     
     coins = get_coins(uid)
-    bot.send_message(uid, f"🔄 Проверка баланса... У вас {coins} монет")
     
     if coins >= CRACK_PLUS_PRICE:
         remove_coins(uid, CRACK_PLUS_PRICE)
         key = generate_key()
-        bot.send_message(uid, f"👑 **CRACK PLUS АКТИВИРОВАН!**\n\n🔗 {CRACK_PLUS_LINK}\n\n🔑 Ключ: `{key}`\n💰 Остаток: {get_coins(uid)}", parse_mode="Markdown")
+        bot.send_message(uid, f"👑 **CRACK PLUS АКТИВИРОВАН!**\n\n🔗 Ссылка:\n{CRACK_PLUS_LINK}\n\n🔑 Ваш ключ активации: `{key}`\n\n💰 Остаток монет: {get_coins(uid)}", parse_mode="Markdown")
     else:
-        bot.send_message(uid, f"❌ Нужно {CRACK_PLUS_PRICE} монет! У вас {coins}")
+        bot.send_message(uid, f"❌ У вас не хватает монет! У вас {coins} монет, надо {CRACK_PLUS_PRICE} монет!")
 
 @bot.message_handler(commands=['admin'])
 @count_message
@@ -241,12 +242,12 @@ def callback(call):
         elif call.data == "admin_change_link":
             bot.answer_callback_query(call.id)
             msg = bot.send_message(uid, "📝 Отправьте новую ссылку:")
-            bot.register_next_step_handler(msg, lambda m: change_link(m))
+            bot.register_next_step_handler(msg, change_link)
 
         elif call.data == "admin_change_image":
             bot.answer_callback_query(call.id)
             msg = bot.send_message(uid, "🖼 Отправьте новую ссылку на картинку:")
-            bot.register_next_step_handler(msg, lambda m: change_image(m))
+            bot.register_next_step_handler(msg, change_image)
 
         elif call.data == "admin_broadcast":
             bot.answer_callback_query(call.id)
@@ -384,7 +385,7 @@ if __name__ == "__main__":
     load_messages()
     load_coins()
     print(f"✅ Загружено: {len(coins_data)} кошельков, {len(message_tracker)} в трекере, {len(blacklist)} в ЧС")
-    print(f"✅ Бот запущен! Команды: /start, /buy, /admin, /test")
+    print(f"✅ Бот запущен! Команды: /start, /buy, /admin")
     bot.remove_webhook()
     time.sleep(1)
     webhook_url = f"https://{os.environ.get('RENDER_EXTERNAL_HOSTNAME', 'bot-tg-1-x4tg.onrender.com')}/{TOKEN}"
