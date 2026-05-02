@@ -332,10 +332,14 @@ def open_case(call):
     
     rand = random.randint(1, 100)
     
+    # ДИАГНОСТИКА В КОНСОЛЬ
+    print(f"🔍 Кейс: {case_type}, rand={rand}, win_chance={win_chance}")
+    
     if case_type == "bronze":
         if rand <= win_chance:
             key = generate_key()
             bot.send_message(uid, f"🎉 **ВЫ ВЫИГРАЛИ CRACK PLUS!** 🎉\n\n🔗 ссылка на скачивание:\n{CRACK_PLUS_LINK}\n\n🔑 ключ активации: `{key}`\n\n💰 Остаток монет: {get_coins(uid)}", parse_mode="Markdown")
+            print(f"🔍 Отправлено сообщение о выигрыше CRACK PLUS! ключ={key}")
         else:
             bot.send_message(uid, f"😔 **Вам ничего не выпало!**\n\n💰 Сгорело {price} монет\n💰 Остаток монет: {get_coins(uid)}", parse_mode="Markdown")
     
@@ -343,6 +347,7 @@ def open_case(call):
         if rand <= win_chance:
             key = generate_key()
             bot.send_message(uid, f"🎉 **ВЫ ВЫИГРАЛИ CRACK PLUS!** 🎉\n\n🔗 ссылка на скачивание:\n{CRACK_PLUS_LINK}\n\n🔑 ключ активации: `{key}`\n\n💰 Остаток монет: {get_coins(uid)}", parse_mode="Markdown")
+            print(f"🔍 Отправлено сообщение о выигрыше CRACK PLUS! ключ={key}")
         else:
             add_coins(uid, 100)
             bot.send_message(uid, f"🎁 **Вы выиграли 100 монет!**\n\n💰 Новый баланс: {get_coins(uid)}", parse_mode="Markdown")
@@ -351,6 +356,7 @@ def open_case(call):
         if rand <= win_chance:
             key = generate_key()
             bot.send_message(uid, f"🎉 **ВЫ ВЫИГРАЛИ CRACK PLUS!** 🎉\n\n🔗 ссылка на скачивание:\n{CRACK_PLUS_LINK}\n\n🔑 ключ активации: `{key}`\n\n💰 Остаток монет: {get_coins(uid)}", parse_mode="Markdown")
+            print(f"🔍 Отправлено сообщение о выигрыше CRACK PLUS! ключ={key}")
         else:
             add_coins(uid, 125)
             bot.send_message(uid, f"🎁 **Вы выиграли 125 монет!**\n\n💰 Новый баланс: {get_coins(uid)}", parse_mode="Markdown")
@@ -398,21 +404,42 @@ def callback(call):
         if not is_admin(uid):
             bot.answer_callback_query(call.id, "❌ Нет доступа!", True)
             return
-        
         user_id = int(call.data.split('_')[1])
         bot.answer_callback_query(call.id, "✏️ Введите текст ответа", show_alert=False)
-        
         msg = bot.send_message(call.message.chat.id, f"✏️ Введите ответ для пользователя (ID: {user_id}):")
         bot.register_next_step_handler(msg, lambda m: send_reply(m, user_id))
         return
     
-    # Кнопки кейсов и фортуны не блокируем кулдауном
-    if call.data not in ["balance", "crack_plus", "fortune_wheel", "fortune_10", "fortune_50", "fortune_100", "fortune_300", "case_bronze", "case_silver", "case_legendary", "cases_menu"]:
-        cd = check_cd(uid)
-        if cd > 0:
-            bot.answer_callback_query(call.id, f"⏳ {cd} сек!", True)
-            return
-        update_cd(uid)
+    # Обработка кейсов
+    if call.data.startswith("case_"):
+        open_case(call)
+        return
+    
+    # Обработка колеса фортуны
+    if call.data == "fortune_wheel":
+        fortune_wheel_menu(call)
+        return
+    
+    if call.data.startswith("fortune_"):
+        fortune_spin(call)
+        return
+    
+    # Кнопка меню кейсов
+    if call.data == "cases_menu":
+        cases_menu(call)
+        return
+    
+    # Кнопка назад
+    if call.data == "back_to_menu":
+        back_to_menu(call)
+        return
+    
+    # КД для остальных кнопок
+    cd = check_cd(uid)
+    if cd > 0:
+        bot.answer_callback_query(call.id, f"⏳ {cd} сек!", True)
+        return
+    update_cd(uid)
     
     # Пользовательские кнопки
     if call.data == "download":
