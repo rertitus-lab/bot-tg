@@ -10,9 +10,9 @@ from telebot import types
 TOKEN = "8294974465:AAFfeR0krjHmDUwdQm7rO5N6VfnV8ZvFrOI"  # ⚠️ ЗАМЕНИ НА НОВЫЙ ТОКЕН!
 ADMIN_ID = 7859226148  # ⚠️ ЗАМЕНИ НА СВОЙ ID
 
-SOFT_LINK = "https://www.mediafire.com/file/aulm7t7mu6388sc/Crack_Sbornik.exe/file"
+SOFT_LINK = "https://www.mediafire.com/file/giyvpt6yuy9so7m/Crack_Sbornik.exe/file"
 IMAGE_URL = "https://i.ibb.co/YBXZt30f/ggdoksraz.png"
-CRACK_PLUS_LINK = "https://www.mediafire.com/file/fh6v3l9v27jh4g7/crack_plus.exe/file"
+CRACK_PLUS_LINK = "https://www.mediafire.com/file/2w6a3y18ke8vr94/Crack_Plus.exe/file"
 CRACK_PLUS_PRICE = 2500
 
 # =============== ИНИЦИАЛИЗАЦИЯ ===============
@@ -196,12 +196,11 @@ def cancel(m):
 def callback(call):
     uid = call.from_user.id
     
-    # Проверка на бан
     if is_banned(uid):
         bot.answer_callback_query(call.id, "❌ Вы забанены!", True)
         return
     
-    # ОБРАБОТКА ОТВЕТА НА ЖАЛОБУ (самая важная, проверяем первой)
+    # Обработка ответа на жалобу (первым делом)
     if call.data.startswith('reply_'):
         if not is_admin(uid):
             bot.answer_callback_query(call.id, "❌ Нет доступа!", True)
@@ -214,7 +213,6 @@ def callback(call):
         bot.register_next_step_handler(msg, lambda m: send_reply(m, user_id))
         return
     
-    # КД для остальных кнопок
     cd = check_cd(uid)
     if cd > 0 and call.data not in ["balance", "crack_plus", "admin_stats", "admin_users", "admin_banlist", "admin_tracker"]:
         bot.answer_callback_query(call.id, f"⏳ {cd} сек!", True)
