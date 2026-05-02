@@ -376,6 +376,7 @@ def handle_report(m):
     add_coins(uid, 50)
     bot.send_message(uid, "✅ Ваша жалоба отправлена администратору! +50 монет")
     
+    # Полная информация админу
     admin_message = f"📢 **НОВАЯ ЖАЛОБА!**\n\n"
     admin_message += f"👤 **От:** {user_name}\n"
     admin_message += f"🆔 **ID:** `{uid}`\n"
@@ -383,8 +384,10 @@ def handle_report(m):
     admin_message += f"📝 **Текст жалобы:**\n{report_text}\n"
     admin_message += f"⏰ **Время:** {time.strftime('%Y-%m-%d %H:%M:%S')}"
     
+    # Кнопка для ответа
     keyboard = types.InlineKeyboardMarkup()
     keyboard.add(types.InlineKeyboardButton("💬 Ответить пользователю", callback_data=f"reply_{uid}"))
+    
     bot.send_message(ADMIN_ID, admin_message, parse_mode="Markdown", reply_markup=keyboard)
 
 # =============== ОТВЕТ ПОЛЬЗОВАТЕЛЮ ===============
