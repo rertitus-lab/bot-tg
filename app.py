@@ -298,7 +298,7 @@ def cases_menu(call):
     
     bot.send_message(uid, "📦 **Выбери кейс для открытия:**\n\n🥉 **Бронзовый** (25) — шанс 10% на Crack Plus\n🥈 **Серебряный** (300) — шанс 25% на Crack Plus\n💎 **Легендарный** (1250) — шанс 45% на Crack Plus", parse_mode="Markdown", reply_markup=kb)
 
-# =============== КЕЙСЫ ===============
+# =============== КЕЙСЫ (ИСПРАВЛЕНА) ===============
 @bot.callback_query_handler(func=lambda call: call.data.startswith("case_"))
 def open_case(call):
     uid = call.from_user.id
@@ -335,14 +335,14 @@ def open_case(call):
     if case_type == "bronze":
         if rand <= win_chance:
             key = generate_key()
-            bot.send_message(uid, f"🎉 **ВЫ ВЫИГРАЛИ CRACK PLUS!** 🎉\n\n🔗 ссылка на скачивание:\n{CRACK_PLUS_LINK}\n\n🔑 ключ активации: {key}\n\n💰 Остаток монет: {get_coins(uid)}", parse_mode="Markdown")
+            bot.send_message(uid, f"🎉 **ВЫ ВЫИГРАЛИ CRACK PLUS!** 🎉\n\n🔗 ссылка на скачивание:\n{CRACK_PLUS_LINK}\n\n🔑 ключ активации: `{key}`\n\n💰 Остаток монет: {get_coins(uid)}", parse_mode="Markdown")
         else:
             bot.send_message(uid, f"😔 **Вам ничего не выпало!**\n\n💰 Сгорело {price} монет\n💰 Остаток монет: {get_coins(uid)}", parse_mode="Markdown")
     
     elif case_type == "silver":
         if rand <= win_chance:
             key = generate_key()
-            bot.send_message(uid, f"🎉 **ВЫ ВЫИГРАЛИ CRACK PLUS!** 🎉\n\n🔗 ссылка на скачивание:\n{CRACK_PLUS_LINK}\n\n🔑 ключ активации: {key}\n\n💰 Остаток монет: {get_coins(uid)}", parse_mode="Markdown")
+            bot.send_message(uid, f"🎉 **ВЫ ВЫИГРАЛИ CRACK PLUS!** 🎉\n\n🔗 ссылка на скачивание:\n{CRACK_PLUS_LINK}\n\n🔑 ключ активации: `{key}`\n\n💰 Остаток монет: {get_coins(uid)}", parse_mode="Markdown")
         else:
             add_coins(uid, 100)
             bot.send_message(uid, f"🎁 **Вы выиграли 100 монет!**\n\n💰 Новый баланс: {get_coins(uid)}", parse_mode="Markdown")
@@ -350,7 +350,7 @@ def open_case(call):
     elif case_type == "legendary":
         if rand <= win_chance:
             key = generate_key()
-            bot.send_message(uid, f"🎉 **ВЫ ВЫИГРАЛИ CRACK PLUS!** 🎉\n\n🔗 ссылка на скачивание:\n{CRACK_PLUS_LINK}\n\n🔑 ключ активации: {key}\n\n💰 Остаток монет: {get_coins(uid)}", parse_mode="Markdown")
+            bot.send_message(uid, f"🎉 **ВЫ ВЫИГРАЛИ CRACK PLUS!** 🎉\n\n🔗 ссылка на скачивание:\n{CRACK_PLUS_LINK}\n\n🔑 ключ активации: `{key}`\n\n💰 Остаток монет: {get_coins(uid)}", parse_mode="Markdown")
         else:
             add_coins(uid, 125)
             bot.send_message(uid, f"🎁 **Вы выиграли 125 монет!**\n\n💰 Новый баланс: {get_coins(uid)}", parse_mode="Markdown")
