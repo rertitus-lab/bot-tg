@@ -146,9 +146,7 @@ def start(m):
         types.InlineKeyboardButton("💰 Баланс", callback_data="balance"),
         types.InlineKeyboardButton("🌐 Crack Plus", callback_data="crack_plus"),
         types.InlineKeyboardButton("🎰 Колесо фортуны", callback_data="fortune_wheel"),
-        types.InlineKeyboardButton("📦 Бронзовый кейс (25)", callback_data="case_bronze"),
-        types.InlineKeyboardButton("📦 Серебряный кейс (300)", callback_data="case_silver"),
-        types.InlineKeyboardButton("💎 Легендарный кейс (1250)", callback_data="case_legendary")
+        types.InlineKeyboardButton("📦 Кейсы", callback_data="cases_menu")
     )
     bot.send_message(uid, "Crack Sbornik - 💥 лучший сборник кряков именно для тебя!", reply_markup=kb)
 
@@ -280,6 +278,26 @@ def fortune_spin(call):
     kb.add(types.InlineKeyboardButton("🔙 Главное меню", callback_data="back_to_menu"))
     bot.send_message(uid, "Хочешь сыграть ещё?", reply_markup=kb)
 
+# =============== МЕНЮ КЕЙСОВ ===============
+@bot.callback_query_handler(func=lambda call: call.data == "cases_menu")
+def cases_menu(call):
+    uid = call.from_user.id
+    if is_banned(uid):
+        bot.answer_callback_query(call.id, "❌ Вы забанены!", True)
+        return
+    
+    bot.answer_callback_query(call.id)
+    
+    kb = types.InlineKeyboardMarkup(row_width=1)
+    kb.add(
+        types.InlineKeyboardButton("🥉 Бронзовый кейс (25 монет)", callback_data="case_bronze"),
+        types.InlineKeyboardButton("🥈 Серебряный кейс (300 монет)", callback_data="case_silver"),
+        types.InlineKeyboardButton("💎 Легендарный кейс (1250 монет)", callback_data="case_legendary"),
+        types.InlineKeyboardButton("🔙 Назад", callback_data="back_to_menu")
+    )
+    
+    bot.send_message(uid, "📦 **Выбери кейс для открытия:**\n\n🥉 **Бронзовый** (25) — шанс 10% на Crack Plus\n🥈 **Серебряный** (300) — шанс 25% на Crack Plus\n💎 **Легендарный** (1250) — шанс 45% на Crack Plus", parse_mode="Markdown", reply_markup=kb)
+
 # =============== КЕЙСЫ ===============
 @bot.callback_query_handler(func=lambda call: call.data.startswith("case_"))
 def open_case(call):
@@ -337,12 +355,13 @@ def open_case(call):
             add_coins(uid, 125)
             bot.send_message(uid, f"🎁 **Вы выиграли 125 монет!**\n\n💰 Новый баланс: {get_coins(uid)}", parse_mode="Markdown")
     
+    # Предложение открыть ещё кейс
     kb = types.InlineKeyboardMarkup()
     kb.add(
-        types.InlineKeyboardButton("📦 Бронзовый кейс (25)", callback_data="case_bronze"),
-        types.InlineKeyboardButton("📦 Серебряный кейс (300)", callback_data="case_silver"),
+        types.InlineKeyboardButton("🥉 Бронзовый кейс (25)", callback_data="case_bronze"),
+        types.InlineKeyboardButton("🥈 Серебряный кейс (300)", callback_data="case_silver"),
         types.InlineKeyboardButton("💎 Легендарный кейс (1250)", callback_data="case_legendary"),
-        types.InlineKeyboardButton("🔙 Главное меню", callback_data="back_to_menu")
+        types.InlineKeyboardButton("🔙 Назад в меню", callback_data="cases_menu")
     )
     bot.send_message(uid, "Хочешь открыть ещё кейс?", reply_markup=kb)
 
@@ -361,9 +380,7 @@ def back_to_menu(call):
         types.InlineKeyboardButton("💰 Баланс", callback_data="balance"),
         types.InlineKeyboardButton("🌐 Crack Plus", callback_data="crack_plus"),
         types.InlineKeyboardButton("🎰 Колесо фортуны", callback_data="fortune_wheel"),
-        types.InlineKeyboardButton("📦 Бронзовый кейс (25)", callback_data="case_bronze"),
-        types.InlineKeyboardButton("📦 Серебряный кейс (300)", callback_data="case_silver"),
-        types.InlineKeyboardButton("💎 Легендарный кейс (1250)", callback_data="case_legendary")
+        types.InlineKeyboardButton("📦 Кейсы", callback_data="cases_menu")
     )
     bot.send_message(uid, "Crack Sbornik - 💥 лучший сборник кряков именно для тебя!", reply_markup=kb)
 
@@ -389,11 +406,13 @@ def callback(call):
         bot.register_next_step_handler(msg, lambda m: send_reply(m, user_id))
         return
     
-    cd = check_cd(uid)
-    if cd > 0 and call.data not in ["balance", "crack_plus", "admin_stats", "admin_users", "admin_banlist", "admin_tracker", "fortune_wheel", "case_bronze", "case_silver", "case_legendary"]:
-        bot.answer_callback_query(call.id, f"⏳ {cd} сек!", True)
-        return
-    update_cd(uid)
+    # Кнопки кейсов и фортуны не блокируем кулдауном
+    if call.data not in ["balance", "crack_plus", "fortune_wheel", "fortune_10", "fortune_50", "fortune_100", "fortune_300", "case_bronze", "case_silver", "case_legendary", "cases_menu"]:
+        cd = check_cd(uid)
+        if cd > 0:
+            bot.answer_callback_query(call.id, f"⏳ {cd} сек!", True)
+            return
+        update_cd(uid)
     
     # Пользовательские кнопки
     if call.data == "download":
