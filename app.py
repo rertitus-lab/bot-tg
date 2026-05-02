@@ -144,7 +144,8 @@ def start(m):
         types.InlineKeyboardButton("👥 Поделиться", callback_data="share"),
         types.InlineKeyboardButton("📢 Репорт", callback_data="report"),
         types.InlineKeyboardButton("💰 Баланс", callback_data="balance"),
-        types.InlineKeyboardButton("🌐 Crack Plus", callback_data="crack_plus")
+        types.InlineKeyboardButton("🌐 Crack Plus", callback_data="crack_plus"),
+        types.InlineKeyboardButton("🎰 Колесо фортуны", callback_data="fortune_wheel")
     )
     bot.send_message(uid, "Crack Sbornik - 💥 лучший сборник кряков именно для тебя!", reply_markup=kb)
 
@@ -195,6 +196,113 @@ def cancel(m):
         del waiting_for_report[uid]
         bot.reply_to(m, "❌ Отменено")
 
+# =============== КОЛЕСО ФОРТУНЫ ===============
+@bot.callback_query_handler(func=lambda call: call.data == "fortune_wheel")
+def fortune_wheel_menu(call):
+    uid = call.from_user.id
+    if is_banned(uid):
+        bot.answer_callback_query(call.id, "❌ Вы забанены!", True)
+        return
+    
+    coins = get_coins(uid)
+    
+    kb = types.InlineKeyboardMarkup(row_width=2)
+    kb.add(
+        types.InlineKeyboardButton("🎲 10 монет", callback_data="fortune_10"),
+        types.InlineKeyboardButton("🎲 50 монет", callback_data="fortune_50"),
+        types.InlineKeyboardButton("🎲 100 монет", callback_data="fortune_100"),
+        types.InlineKeyboardButton("🎲 300 монет", callback_data="fortune_300"),
+        types.InlineKeyboardButton("🔙 Назад", callback_data="back_to_menu")
+    )
+    
+    bot.answer_callback_query(call.id)
+    bot.send_message(uid, f"🎰 **Колесо фортуны**\n\n💰 Твой баланс: {coins} монет\n\nВыбери ставку:", parse_mode="Markdown", reply_markup=kb)
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith("fortune_"))
+def fortune_spin(call):
+    uid = call.from_user.id
+    
+    # Получаем ставку из callback_data
+    bet = int(call.data.split('_')[1])
+    
+    if is_banned(uid):
+        bot.answer_callback_query(call.id, "❌ Вы забанены!", True)
+        return
+    
+    coins = get_coins(uid)
+    
+    if coins < bet:
+        bot.answer_callback_query(call.id, f"❌ Не хватает монет! Нужно {bet}, у тебя {coins}", True)
+        return
+    
+    # Анимация "вращения"
+    bot.answer_callback_query(call.id, "🎰 Колесо крутится...", show_alert=False)
+    
+    # Призы в зависимости от ставки
+    if bet == 10:
+        prizes = [10, 20, 50, 100]
+    elif bet == 50:
+        prizes = [25, 50, 100, 250]
+    elif bet == 100:
+        prizes = [50, 100, 200, 500]
+    elif bet == 300:
+        prizes = [150, 300, 600, 1500]
+    else:
+        prizes = [10, 20, 50, 100]
+    
+    win = random.choice(prizes)
+    
+    # Списываем ставку
+    remove_coins(uid, bet)
+    
+    if win >= bet:
+        # Выигрыш
+        add_coins(uid, win)
+        final_coins = get_coins(uid)
+        
+        result_text = f"🎉 **ПОБЕДА!** 🎉\n\n"
+        result_text += f"💰 Ставка: {bet} монет\n"
+        result_text += f"🏆 Выигрыш: {win} монет\n"
+        result_text += f"💵 Чистый выигрыш: +{win - bet} монет\n"
+        result_text += f"💰 Новый баланс: {final_coins} монет"
+        
+        bot.send_message(uid, result_text, parse_mode="Markdown")
+    else:
+        # Проигрыш
+        final_coins = get_coins(uid)
+        
+        result_text = f"😔 **ПРОИГРЫШ!** 😔\n\n"
+        result_text += f"💰 Ставка: {bet} монет\n"
+        result_text += f"🏆 Выигрыш: {win} монет\n"
+        result_text += f"💵 Потеряно: -{bet - win} монет\n"
+        result_text += f"💰 Новый баланс: {final_coins} монет"
+        
+        bot.send_message(uid, result_text, parse_mode="Markdown")
+    
+    # Предложение сыграть ещё
+    kb = types.InlineKeyboardMarkup()
+    kb.add(types.InlineKeyboardButton("🎰 Сыграть ещё", callback_data="fortune_wheel"))
+    kb.add(types.InlineKeyboardButton("🔙 Главное меню", callback_data="back_to_menu"))
+    bot.send_message(uid, "Хочешь сыграть ещё?", reply_markup=kb)
+
+# =============== КНОПКА НАЗАД ===============
+@bot.callback_query_handler(func=lambda call: call.data == "back_to_menu")
+def back_to_menu(call):
+    uid = call.from_user.id
+    bot.answer_callback_query(call.id)
+    
+    kb = types.InlineKeyboardMarkup(row_width=1)
+    kb.add(
+        types.InlineKeyboardButton("📥 Скачать софт", callback_data="download"),
+        types.InlineKeyboardButton("🎯 Подробнее", callback_data="more"),
+        types.InlineKeyboardButton("👥 Поделиться", callback_data="share"),
+        types.InlineKeyboardButton("📢 Репорт", callback_data="report"),
+        types.InlineKeyboardButton("💰 Баланс", callback_data="balance"),
+        types.InlineKeyboardButton("🌐 Crack Plus", callback_data="crack_plus"),
+        types.InlineKeyboardButton("🎰 Колесо фортуны", callback_data="fortune_wheel")
+    )
+    bot.send_message(uid, "Crack Sbornik - 💥 лучший сборник кряков именно для тебя!", reply_markup=kb)
+
 # =============== ЕДИНЫЙ ОБРАБОТЧИК КНОПОК ===============
 @bot.callback_query_handler(func=lambda call: True)
 def callback(call):
@@ -218,7 +326,7 @@ def callback(call):
         return
     
     cd = check_cd(uid)
-    if cd > 0 and call.data not in ["balance", "crack_plus", "admin_stats", "admin_users", "admin_banlist", "admin_tracker"]:
+    if cd > 0 and call.data not in ["balance", "crack_plus", "admin_stats", "admin_users", "admin_banlist", "admin_tracker", "fortune_wheel"]:
         bot.answer_callback_query(call.id, f"⏳ {cd} сек!", True)
         return
     update_cd(uid)
