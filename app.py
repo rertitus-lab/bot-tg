@@ -127,7 +127,7 @@ def test_command(m):
     track_user(m)
     bot.send_message(m.chat.id, "✅ Бот работает! Команды: /start, /buy, /admin")
 
-# =============== КРЕСТИКИ-НОЛИКИ ===============
+# =============== КРЕСТИКИ-НОЛИКИ (ЛЁГКИЙ БОТ) ===============
 def create_ttt_keyboard(board):
     kb = types.InlineKeyboardMarkup(row_width=3)
     buttons = []
@@ -151,28 +151,10 @@ def check_winner(board):
     return None
 
 def bot_move(board):
-    for i in range(9):
-        if board[i] == "":
-            board[i] = "O"
-            if check_winner(board) == "O":
-                return i
-            board[i] = ""
-    for i in range(9):
-        if board[i] == "":
-            board[i] = "X"
-            if check_winner(board) == "X":
-                board[i] = ""
-                return i
-            board[i] = ""
-    if board[4] == "":
-        return 4
-    corners = [0, 2, 6, 8]
-    for i in corners:
-        if board[i] == "":
-            return i
-    for i in range(9):
-        if board[i] == "":
-            return i
+    """Лёгкий бот — ходит в случайную свободную клетку"""
+    free_cells = [i for i in range(9) if board[i] == ""]
+    if free_cells:
+        return random.choice(free_cells)
     return None
 
 def format_board_for_message(board):
@@ -210,7 +192,7 @@ def tic_tac_toe_menu(call):
     )
     
     bot.answer_callback_query(call.id)
-    bot.send_message(uid, "❌ **Крестики-нолики с ботом**\n\nВыбери ставку (при победе x2):", parse_mode="Markdown", reply_markup=kb)
+    bot.send_message(uid, "❌ **Крестики-нолики с лёгким ботом**\n\nВыбери ставку (при победе x2):", parse_mode="Markdown", reply_markup=kb)
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith("ttt_bet_"))
 def start_ttt_game(call):
