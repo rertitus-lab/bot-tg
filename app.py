@@ -2,6 +2,7 @@ import os
 import time
 import random
 import string
+import threading
 from flask import Flask, request
 import telebot
 from telebot import types
@@ -30,6 +31,9 @@ coins_data = {}
 BLACKLIST_FILE = "blacklist.txt"
 MESSAGE_FILE = "messages.txt"
 COINS_FILE = "coins.txt"
+
+# Крестики-нолики
+ttt_games = {}
 
 # =============== ФУНКЦИЯ ГЕНЕРАЦИИ КЛЮЧА ===============
 def generate_key():
@@ -123,73 +127,193 @@ def test_command(m):
     track_user(m)
     bot.send_message(m.chat.id, "✅ Бот работает! Команды: /start, /buy, /admin")
 
-# =============== КОМАНДЫ ===============
-@bot.message_handler(commands=['start'])
-def start(m):
-    track_user(m)
-    uid = m.from_user.id
-    if is_banned(uid):
-        bot.send_message(uid, "❌ Вы забанены!")
-        return
-    users.add(uid)
-    add_coins(uid, 10)
-    bot.send_message(uid, f"💰 +10 монет! Баланс: {get_coins(uid)}")
+# =============== КРЕСТИКИ-НОЛИКИ ===============
+def create_ttt_keyboard(board):
+    kb = types.InlineKeyboardMarkup(row_width=3)
+    buttons = []
+    for i in range(9):
+        emoji = "❌" if board[i] == "X" else "⭕" if board[i] == "O" else "⬜"
+        buttons.append(types.InlineKeyboardButton(emoji, callback_data=f"ttt_{i}"))
+    kb.add(*buttons)
+    return kb
 
-    kb = types.InlineKeyboardMarkup(row_width=1)
-    kb.add(
-        types.InlineKeyboardButton("📥 Скачать софт", callback_data="download"),
-        types.InlineKeyboardButton("🎯 Подробнее", callback_data="more"),
-        types.InlineKeyboardButton("👥 Поделиться", callback_data="share"),
-        types.InlineKeyboardButton("📢 Репорт", callback_data="report"),
-        types.InlineKeyboardButton("💰 Баланс", callback_data="balance"),
-        types.InlineKeyboardButton("🌐 Crack Plus", callback_data="crack_plus"),
-        types.InlineKeyboardButton("🎰 Колесо фортуны", callback_data="fortune_wheel")
-    )
-    bot.send_message(uid, "Crack Sbornik - 💥 лучший сборник кряков именно для тебя!", reply_markup=kb)
+def check_winner(board):
+    win_patterns = [
+        [0, 1, 2], [3, 4, 5], [6, 7, 8],
+        [0, 3, 6], [1, 4, 7], [2, 5, 8],
+        [0, 4, 8], [2, 4, 6]
+    ]
+    for pattern in win_patterns:
+        if board[pattern[0]] == board[pattern[1]] == board[pattern[2]] != "":
+            return board[pattern[0]]
+    if "" not in board:
+        return "draw"
+    return None
 
-@bot.message_handler(commands=['buy'])
-def buy(m):
-    track_user(m)
-    uid = m.from_user.id
-    if is_banned(uid):
-        bot.send_message(uid, "❌ Вы забанены!")
-        return
-    coins = get_coins(uid)
-    if coins >= CRACK_PLUS_PRICE:
-        remove_coins(uid, CRACK_PLUS_PRICE)
-        key = generate_key()
-        bot.send_message(uid, f"🎉 CRACK PLUS КУПЛЕН!\n\n🔗 Ссылка:\n{CRACK_PLUS_LINK}\n\n🔑 Ключ активации: {key}\n\n💰 Остаток монет: {get_coins(uid)}")
+def bot_move(board):
+    for i in range(9):
+        if board[i] == "":
+            board[i] = "O"
+            if check_winner(board) == "O":
+                return i
+            board[i] = ""
+    for i in range(9):
+        if board[i] == "":
+            board[i] = "X"
+            if check_winner(board) == "X":
+                board[i] = ""
+                return i
+            board[i] = ""
+    if board[4] == "":
+        return 4
+    corners = [0, 2, 6, 8]
+    for i in corners:
+        if board[i] == "":
+            return i
+    for i in range(9):
+        if board[i] == "":
+            return i
+    return None
+
+def format_board_for_message(board):
+    symbols = {"X": "❌", "O": "⭕", "": "⬜"}
+    rows = []
+    for i in range(0, 9, 3):
+        row = " ".join(symbols[board[j]] for j in range(i, i+3))
+        rows.append(row)
+    return "```\n" + "\n".join(rows) + "\n```"
+
+def game_over_message(winner, board, bet):
+    win_amount = bet * 2
+    if winner == "X":
+        return f"🎉 **ПОБЕДА!** 🎉\n\nТы выиграл {win_amount} монет (x2 от {bet})!\n\n" + format_board_for_message(board)
+    elif winner == "O":
+        return f"😔 **ПРОИГРЫШ!** 😔\n\nТы проиграл {bet} монет.\n\n" + format_board_for_message(board)
     else:
-        bot.send_message(uid, f"❌ Не хватает монет! У вас {coins}, надо {CRACK_PLUS_PRICE}")
+        return f"🤝 **НИЧЬЯ!** 🤝\n\nСтавка возвращена — {bet} монет.\n\n" + format_board_for_message(board)
 
-@bot.message_handler(commands=['admin'])
-def admin(m):
-    track_user(m)
-    if not is_admin(m.from_user.id):
-        bot.send_message(m.chat.id, "❌ Нет доступа!")
+@bot.callback_query_handler(func=lambda call: call.data == "tic_tac_toe")
+def tic_tac_toe_menu(call):
+    uid = call.from_user.id
+    if is_banned(uid):
+        bot.answer_callback_query(call.id, "❌ Вы забанены!", True)
         return
-    kb = types.InlineKeyboardMarkup(row_width=1)
+    
+    kb = types.InlineKeyboardMarkup(row_width=2)
     kb.add(
-        types.InlineKeyboardButton("📊 Статистика", callback_data="admin_stats"),
-        types.InlineKeyboardButton("📝 Сменить ссылку", callback_data="admin_change_link"),
-        types.InlineKeyboardButton("👥 Пользователи", callback_data="admin_users"),
-        types.InlineKeyboardButton("📢 Рассылка", callback_data="admin_broadcast"),
-        types.InlineKeyboardButton("🖼 Сменить картинку", callback_data="admin_change_image"),
-        types.InlineKeyboardButton("🚫 Забанить", callback_data="admin_ban"),
-        types.InlineKeyboardButton("✅ Разбанить", callback_data="admin_unban"),
-        types.InlineKeyboardButton("📋 Список ЧС", callback_data="admin_banlist"),
-        types.InlineKeyboardButton("📊 Трекер", callback_data="admin_tracker"),
-        types.InlineKeyboardButton("💰 Выдать монеты", callback_data="admin_give_coins")
+        types.InlineKeyboardButton("🎲 50 монет", callback_data="ttt_bet_50"),
+        types.InlineKeyboardButton("🎲 100 монет", callback_data="ttt_bet_100"),
+        types.InlineKeyboardButton("🎲 300 монет", callback_data="ttt_bet_300"),
+        types.InlineKeyboardButton("🎲 1000 монет", callback_data="ttt_bet_1000"),
+        types.InlineKeyboardButton("🎲 2000 монет", callback_data="ttt_bet_2000"),
+        types.InlineKeyboardButton("🔙 Назад", callback_data="back_to_menu")
     )
-    bot.send_message(m.chat.id, "🔧 Админ-панель", reply_markup=kb)
+    
+    bot.answer_callback_query(call.id)
+    bot.send_message(uid, "❌ **Крестики-нолики с ботом**\n\nВыбери ставку (при победе x2):", parse_mode="Markdown", reply_markup=kb)
 
-@bot.message_handler(commands=['cancel'])
-def cancel(m):
-    track_user(m)
-    uid = m.from_user.id
-    if uid in waiting_for_report:
-        del waiting_for_report[uid]
-        bot.reply_to(m, "❌ Отменено")
+@bot.callback_query_handler(func=lambda call: call.data.startswith("ttt_bet_"))
+def start_ttt_game(call):
+    uid = call.from_user.id
+    bet = int(call.data.split('_')[2])
+    
+    if is_banned(uid):
+        bot.answer_callback_query(call.id, "❌ Вы забанены!", True)
+        return
+    
+    coins = get_coins(uid)
+    if coins < bet:
+        bot.answer_callback_query(call.id, f"❌ Не хватает монет! Нужно {bet}, у тебя {coins}", True)
+        return
+    
+    bot.answer_callback_query(call.id)
+    
+    board = [""] * 9
+    remove_coins(uid, bet)
+    
+    ttt_games[uid] = {
+        "board": board, 
+        "turn": "user", 
+        "bet": bet, 
+        "message_id": None, 
+        "chat_id": call.message.chat.id
+    }
+    
+    kb = create_ttt_keyboard(board)
+    msg = bot.send_message(uid, f"❌ **Крестики-нолики**\n\n💰 Ставка: {bet} монет\n💰 Выигрыш: {bet * 2} монет (x2)\nТвой ход (❌):\n\n{format_board_for_message(board)}", parse_mode="Markdown", reply_markup=kb)
+    
+    ttt_games[uid]["message_id"] = msg.message_id
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith("ttt_") and not call.data.startswith("ttt_bet_"))
+def ttt_move(call):
+    uid = call.from_user.id
+    cell = int(call.data.split('_')[1])
+    
+    if uid not in ttt_games:
+        bot.answer_callback_query(call.id, "❌ Игра не найдена!", True)
+        return
+    
+    game = ttt_games[uid]
+    board = game["board"]
+    chat_id = game["chat_id"]
+    message_id = game["message_id"]
+    bet = game["bet"]
+    
+    if game["turn"] != "user":
+        bot.answer_callback_query(call.id, "⏳ Сейчас ход бота!", True)
+        return
+    
+    if board[cell] != "":
+        bot.answer_callback_query(call.id, "❌ Эта клетка уже занята!", True)
+        return
+    
+    board[cell] = "X"
+    winner = check_winner(board)
+    
+    if winner == "X":
+        win_amount = bet * 2
+        add_coins(uid, win_amount)
+        bot.edit_message_text(game_over_message("X", board, bet), chat_id, message_id, parse_mode="Markdown")
+        del ttt_games[uid]
+        bot.answer_callback_query(call.id, f"🎉 Ты выиграл {win_amount} монет!", show_alert=True)
+        return
+    elif winner == "draw":
+        add_coins(uid, bet)
+        bot.edit_message_text(game_over_message("draw", board, bet), chat_id, message_id, parse_mode="Markdown")
+        del ttt_games[uid]
+        bot.answer_callback_query(call.id, f"🤝 Ничья! Возвращено {bet} монет", show_alert=True)
+        return
+    
+    game["turn"] = "bot"
+    bot.answer_callback_query(call.id, "🤖 Бот думает...")
+    
+    kb = create_ttt_keyboard(board)
+    bot.edit_message_text(f"❌ **Крестики-нолики**\n\n💰 Ставка: {bet} монет\n💰 Выигрыш: {bet * 2} монет (x2)\nХод бота (⭕):\n\n{format_board_for_message(board)}", chat_id, message_id, parse_mode="Markdown", reply_markup=kb)
+    
+    def bot_move_async():
+        time.sleep(1)
+        
+        move = bot_move(board)
+        if move is not None:
+            board[move] = "O"
+        
+        winner = check_winner(board)
+        
+        if winner == "O":
+            bot.edit_message_text(game_over_message("O", board, bet), chat_id, message_id, parse_mode="Markdown")
+            del ttt_games[uid]
+            bot.answer_callback_query(call.id, f"😔 Ты проиграл {bet} монет", show_alert=True)
+        elif winner == "draw":
+            add_coins(uid, bet)
+            bot.edit_message_text(game_over_message("draw", board, bet), chat_id, message_id, parse_mode="Markdown")
+            del ttt_games[uid]
+            bot.answer_callback_query(call.id, f"🤝 Ничья! Возвращено {bet} монет", show_alert=True)
+        else:
+            game["turn"] = "user"
+            kb = create_ttt_keyboard(board)
+            bot.edit_message_text(f"❌ **Крестики-нолики**\n\n💰 Ставка: {bet} монет\n💰 Выигрыш: {bet * 2} монет (x2)\nТвой ход (❌):\n\n{format_board_for_message(board)}", chat_id, message_id, parse_mode="Markdown", reply_markup=kb)
+    
+    threading.Thread(target=bot_move_async).start()
 
 # =============== КОЛЕСО ФОРТУНЫ ===============
 @bot.callback_query_handler(func=lambda call: call.data == "fortune_wheel")
@@ -286,9 +410,79 @@ def back_to_menu(call):
         types.InlineKeyboardButton("📢 Репорт", callback_data="report"),
         types.InlineKeyboardButton("💰 Баланс", callback_data="balance"),
         types.InlineKeyboardButton("🌐 Crack Plus", callback_data="crack_plus"),
-        types.InlineKeyboardButton("🎰 Колесо фортуны", callback_data="fortune_wheel")
+        types.InlineKeyboardButton("🎰 Колесо фортуны", callback_data="fortune_wheel"),
+        types.InlineKeyboardButton("❌ Крестики-нолики", callback_data="tic_tac_toe")
     )
     bot.send_message(uid, "Crack Sbornik - 💥 лучший сборник кряков именно для тебя!", reply_markup=kb)
+
+# =============== КОМАНДЫ ===============
+@bot.message_handler(commands=['start'])
+def start(m):
+    track_user(m)
+    uid = m.from_user.id
+    if is_banned(uid):
+        bot.send_message(uid, "❌ Вы забанены!")
+        return
+    users.add(uid)
+    add_coins(uid, 10)
+    bot.send_message(uid, f"💰 +10 монет! Баланс: {get_coins(uid)}")
+
+    kb = types.InlineKeyboardMarkup(row_width=1)
+    kb.add(
+        types.InlineKeyboardButton("📥 Скачать софт", callback_data="download"),
+        types.InlineKeyboardButton("🎯 Подробнее", callback_data="more"),
+        types.InlineKeyboardButton("👥 Поделиться", callback_data="share"),
+        types.InlineKeyboardButton("📢 Репорт", callback_data="report"),
+        types.InlineKeyboardButton("💰 Баланс", callback_data="balance"),
+        types.InlineKeyboardButton("🌐 Crack Plus", callback_data="crack_plus"),
+        types.InlineKeyboardButton("🎰 Колесо фортуны", callback_data="fortune_wheel"),
+        types.InlineKeyboardButton("❌ Крестики-нолики", callback_data="tic_tac_toe")
+    )
+    bot.send_message(uid, "Crack Sbornik - 💥 лучший сборник кряков именно для тебя!", reply_markup=kb)
+
+@bot.message_handler(commands=['buy'])
+def buy(m):
+    track_user(m)
+    uid = m.from_user.id
+    if is_banned(uid):
+        bot.send_message(uid, "❌ Вы забанены!")
+        return
+    coins = get_coins(uid)
+    if coins >= CRACK_PLUS_PRICE:
+        remove_coins(uid, CRACK_PLUS_PRICE)
+        key = generate_key()
+        bot.send_message(uid, f"🎉 CRACK PLUS КУПЛЕН!\n\n🔗 Ссылка:\n{CRACK_PLUS_LINK}\n\n🔑 Ключ активации: {key}\n\n💰 Остаток монет: {get_coins(uid)}")
+    else:
+        bot.send_message(uid, f"❌ Не хватает монет! У вас {coins}, надо {CRACK_PLUS_PRICE}")
+
+@bot.message_handler(commands=['admin'])
+def admin(m):
+    track_user(m)
+    if not is_admin(m.from_user.id):
+        bot.send_message(m.chat.id, "❌ Нет доступа!")
+        return
+    kb = types.InlineKeyboardMarkup(row_width=1)
+    kb.add(
+        types.InlineKeyboardButton("📊 Статистика", callback_data="admin_stats"),
+        types.InlineKeyboardButton("📝 Сменить ссылку", callback_data="admin_change_link"),
+        types.InlineKeyboardButton("👥 Пользователи", callback_data="admin_users"),
+        types.InlineKeyboardButton("📢 Рассылка", callback_data="admin_broadcast"),
+        types.InlineKeyboardButton("🖼 Сменить картинку", callback_data="admin_change_image"),
+        types.InlineKeyboardButton("🚫 Забанить", callback_data="admin_ban"),
+        types.InlineKeyboardButton("✅ Разбанить", callback_data="admin_unban"),
+        types.InlineKeyboardButton("📋 Список ЧС", callback_data="admin_banlist"),
+        types.InlineKeyboardButton("📊 Трекер", callback_data="admin_tracker"),
+        types.InlineKeyboardButton("💰 Выдать монеты", callback_data="admin_give_coins")
+    )
+    bot.send_message(m.chat.id, "🔧 Админ-панель", reply_markup=kb)
+
+@bot.message_handler(commands=['cancel'])
+def cancel(m):
+    track_user(m)
+    uid = m.from_user.id
+    if uid in waiting_for_report:
+        del waiting_for_report[uid]
+        bot.reply_to(m, "❌ Отменено")
 
 # =============== ОБРАБОТЧИК КНОПОК ===============
 @bot.callback_query_handler(func=lambda call: True)
@@ -311,7 +505,7 @@ def callback(call):
         return
     
     # Исключения для КД
-    if call.data not in ["balance", "crack_plus", "fortune_wheel", "fortune_10", "fortune_50", "fortune_100", "fortune_300"]:
+    if call.data not in ["balance", "crack_plus", "fortune_wheel", "fortune_10", "fortune_50", "fortune_100", "fortune_300", "tic_tac_toe", "ttt_bet_50", "ttt_bet_100", "ttt_bet_300", "ttt_bet_1000", "ttt_bet_2000"]:
         cd = check_cd(uid)
         if cd > 0:
             bot.answer_callback_query(call.id, f"⏳ {cd} сек!", True)
