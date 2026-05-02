@@ -298,17 +298,13 @@ def cases_menu(call):
     
     bot.send_message(uid, "📦 **Выбери кейс для открытия:**\n\n🥉 **Бронзовый** (25) — шанс 10% на Crack Plus\n🥈 **Серебряный** (300) — шанс 25% на Crack Plus\n💎 **Легендарный** (1250) — шанс 45% на Crack Plus", parse_mode="Markdown", reply_markup=kb)
 
-# =============== КЕЙСЫ (ИСПРАВЛЕНА) ===============
+# =============== КЕЙСЫ (УПРОЩЁННАЯ ВЕРСИЯ) ===============
 @bot.callback_query_handler(func=lambda call: call.data.startswith("case_"))
 def open_case(call):
     uid = call.from_user.id
-    
-    if is_banned(uid):
-        bot.answer_callback_query(call.id, "❌ Вы забанены!", True)
-        return
-    
     case_type = call.data.split('_')[1]
     
+    # Определяем параметры кейса
     if case_type == "bronze":
         price = 25
         win_chance = 10
@@ -319,55 +315,47 @@ def open_case(call):
         price = 1250
         win_chance = 45
     else:
+        bot.send_message(uid, "❌ Неизвестный кейс!")
+        return
+    
+    # Проверка бана и монет
+    if is_banned(uid):
+        bot.answer_callback_query(call.id, "❌ Вы забанены!", True)
         return
     
     coins = get_coins(uid)
-    
     if coins < price:
-        bot.answer_callback_query(call.id, f"❌ Не хватает монет! Нужно {price}, у тебя {coins}", True)
+        bot.answer_callback_query(call.id, f"❌ Нужно {price} монет! У тебя {coins}", True)
         return
     
-    bot.answer_callback_query(call.id, "🎲 Открываем кейс...", show_alert=False)
+    # Открываем кейс
+    bot.answer_callback_query(call.id, "🎲 Открываем кейс...")
     remove_coins(uid, price)
     
+    # Рандом
     rand = random.randint(1, 100)
     
-    # ДИАГНОСТИКА В КОНСОЛЬ
-    print(f"🔍 Кейс: {case_type}, rand={rand}, win_chance={win_chance}")
-    
-    if case_type == "bronze":
-        if rand <= win_chance:
-            key = generate_key()
-            bot.send_message(uid, f"🎉 **ВЫ ВЫИГРАЛИ CRACK PLUS!** 🎉\n\n🔗 ссылка на скачивание:\n{CRACK_PLUS_LINK}\n\n🔑 ключ активации: `{key}`\n\n💰 Остаток монет: {get_coins(uid)}", parse_mode="Markdown")
-            print(f"🔍 Отправлено сообщение о выигрыше CRACK PLUS! ключ={key}")
-        else:
-            bot.send_message(uid, f"😔 **Вам ничего не выпало!**\n\n💰 Сгорело {price} монет\n💰 Остаток монет: {get_coins(uid)}", parse_mode="Markdown")
-    
-    elif case_type == "silver":
-        if rand <= win_chance:
-            key = generate_key()
-            bot.send_message(uid, f"🎉 **ВЫ ВЫИГРАЛИ CRACK PLUS!** 🎉\n\n🔗 ссылка на скачивание:\n{CRACK_PLUS_LINK}\n\n🔑 ключ активации: `{key}`\n\n💰 Остаток монет: {get_coins(uid)}", parse_mode="Markdown")
-            print(f"🔍 Отправлено сообщение о выигрыше CRACK PLUS! ключ={key}")
-        else:
+    # ОТПРАВЛЯЕМ СООБЩЕНИЕ О РЕЗУЛЬТАТЕ (ВСЕГДА)
+    if rand <= win_chance:
+        key = generate_key()
+        bot.send_message(uid, f"🎉 **ВЫ ВЫИГРАЛИ CRACK PLUS!** 🎉\n\n🔗 Ссылка:\n{CRACK_PLUS_LINK}\n\n🔑 Ключ активации: `{key}`\n\n💰 Остаток: {get_coins(uid)}", parse_mode="Markdown")
+    else:
+        if case_type == "bronze":
+            bot.send_message(uid, f"😔 **Вам ничего не выпало!**\n\n💰 Потеряно: {price} монет\n💰 Остаток: {get_coins(uid)}")
+        elif case_type == "silver":
             add_coins(uid, 100)
-            bot.send_message(uid, f"🎁 **Вы выиграли 100 монет!**\n\n💰 Новый баланс: {get_coins(uid)}", parse_mode="Markdown")
-    
-    elif case_type == "legendary":
-        if rand <= win_chance:
-            key = generate_key()
-            bot.send_message(uid, f"🎉 **ВЫ ВЫИГРАЛИ CRACK PLUS!** 🎉\n\n🔗 ссылка на скачивание:\n{CRACK_PLUS_LINK}\n\n🔑 ключ активации: `{key}`\n\n💰 Остаток монет: {get_coins(uid)}", parse_mode="Markdown")
-            print(f"🔍 Отправлено сообщение о выигрыше CRACK PLUS! ключ={key}")
+            bot.send_message(uid, f"🎁 **Вы выиграли 100 монет!**\n\n💰 Новый баланс: {get_coins(uid)}")
         else:
             add_coins(uid, 125)
-            bot.send_message(uid, f"🎁 **Вы выиграли 125 монет!**\n\n💰 Новый баланс: {get_coins(uid)}", parse_mode="Markdown")
+            bot.send_message(uid, f"🎁 **Вы выиграли 125 монет!**\n\n💰 Новый баланс: {get_coins(uid)}")
     
-    # Предложение открыть ещё кейс
+    # Кнопки для продолжения
     kb = types.InlineKeyboardMarkup()
     kb.add(
-        types.InlineKeyboardButton("🥉 Бронзовый кейс (25)", callback_data="case_bronze"),
-        types.InlineKeyboardButton("🥈 Серебряный кейс (300)", callback_data="case_silver"),
-        types.InlineKeyboardButton("💎 Легендарный кейс (1250)", callback_data="case_legendary"),
-        types.InlineKeyboardButton("🔙 Назад в меню", callback_data="cases_menu")
+        types.InlineKeyboardButton("🥉 Бронзовый (25)", callback_data="case_bronze"),
+        types.InlineKeyboardButton("🥈 Серебряный (300)", callback_data="case_silver"),
+        types.InlineKeyboardButton("💎 Легендарный (1250)", callback_data="case_legendary"),
+        types.InlineKeyboardButton("🔙 В меню", callback_data="cases_menu")
     )
     bot.send_message(uid, "Хочешь открыть ещё кейс?", reply_markup=kb)
 
