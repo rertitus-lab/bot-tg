@@ -191,90 +191,106 @@ def cancel(m):
         del waiting_for_report[uid]
         bot.reply_to(m, "❌ Отменено")
 
-# =============== КНОПКИ ===============
+# =============== ЕДИНЫЙ ОБРАБОТЧИК КНОПОК ===============
 @bot.callback_query_handler(func=lambda call: True)
 def callback(call):
     uid = call.from_user.id
+    
+    # Проверка на бан
     if is_banned(uid):
         bot.answer_callback_query(call.id, "❌ Вы забанены!", True)
         return
-
+    
+    # ОБРАБОТКА ОТВЕТА НА ЖАЛОБУ (самая важная, проверяем первой)
+    if call.data.startswith('reply_'):
+        if not is_admin(uid):
+            bot.answer_callback_query(call.id, "❌ Нет доступа!", True)
+            return
+        
+        user_id = int(call.data.split('_')[1])
+        bot.answer_callback_query(call.id, "✏️ Введите текст ответа", show_alert=False)
+        
+        msg = bot.send_message(call.message.chat.id, f"✏️ Введите ответ для пользователя (ID: {user_id}):")
+        bot.register_next_step_handler(msg, lambda m: send_reply(m, user_id))
+        return
+    
+    # КД для остальных кнопок
     cd = check_cd(uid)
     if cd > 0 and call.data not in ["balance", "crack_plus", "admin_stats", "admin_users", "admin_banlist", "admin_tracker"]:
         bot.answer_callback_query(call.id, f"⏳ {cd} сек!", True)
         return
     update_cd(uid)
-
+    
     # Пользовательские кнопки
     if call.data == "download":
         global download_count
         download_count += 1
         bot.answer_callback_query(call.id, "✅ Ссылка отправлена!")
         bot.send_message(uid, f"🔗 {SOFT_LINK}")
-
+    
     elif call.data == "more":
         bot.answer_callback_query(call.id, "📸")
         bot.send_photo(uid, IMAGE_URL, caption="☢️ антивирус может ругаться на софт")
-
+    
     elif call.data == "share":
         bot.answer_callback_query(call.id)
         bot.send_message(uid, f"👥 Поделиться:\nhttps://t.me/{bot.get_me().username}")
-
+    
     elif call.data == "balance":
         bot.answer_callback_query(call.id)
         bot.send_message(uid, f"💰 Баланс: {get_coins(uid)} монет")
-
+    
     elif call.data == "crack_plus":
         bot.answer_callback_query(call.id)
         bot.send_message(uid, "🌐 **Crack Plus**\n\nНапишите /buy чтобы купить!\n/start дает +10 монет!\nCrack Plus дает лучшую оптимизацию и больше функций!", parse_mode="Markdown")
-
+    
     elif call.data == "report":
         waiting_for_report[uid] = True
         bot.answer_callback_query(call.id)
         bot.send_message(uid, "✍️ Напишите текст жалобы (/cancel для отмены)")
-
+    
     # Админ-кнопки
-    elif is_admin(uid):
+    elif is_admin(uid) and call.data.startswith('admin_'):
         if call.data == "admin_stats":
             bot.answer_callback_query(call.id)
             bot.send_message(uid, f"📊 Статистика:\n📥 Скачиваний: {download_count}\n👥 Пользователей: {len(users)}")
-
+        
         elif call.data == "admin_users":
             bot.answer_callback_query(call.id)
             bot.send_message(uid, f"👥 Всего пользователей: {len(users)}")
-
+        
         elif call.data == "admin_change_link":
             bot.answer_callback_query(call.id)
             msg = bot.send_message(uid, "📝 Отправьте новую ссылку:")
             bot.register_next_step_handler(msg, change_link)
-
+        
         elif call.data == "admin_change_image":
             bot.answer_callback_query(call.id)
             msg = bot.send_message(uid, "🖼 Отправьте новую ссылку на картинку:")
             bot.register_next_step_handler(msg, change_image)
-
+        
         elif call.data == "admin_broadcast":
             bot.answer_callback_query(call.id)
             msg = bot.send_message(uid, "📢 Введите текст для рассылки:")
             bot.register_next_step_handler(msg, broadcast)
-
+        
         elif call.data == "admin_ban":
             bot.answer_callback_query(call.id)
             msg = bot.send_message(uid, "🚫 Введите ID:")
             bot.register_next_step_handler(msg, ban_user)
-
+        
         elif call.data == "admin_unban":
             bot.answer_callback_query(call.id)
             msg = bot.send_message(uid, "✅ Введите ID:")
             bot.register_next_step_handler(msg, unban_user)
-
+        
         elif call.data == "admin_banlist":
             bot.answer_callback_query(call.id)
             if blacklist:
                 bot.send_message(uid, f"📋 Забаненные:\n" + "\n".join(str(x) for x in blacklist))
             else:
                 bot.send_message(uid, "📋 ЧС пуст")
-
+        
         elif call.data == "admin_tracker":
             bot.answer_callback_query(call.id)
             if not message_tracker:
@@ -286,11 +302,23 @@ def callback(call):
                 name = d.get('username') or d.get('name', str(uidd))[:15]
                 text += f"{i}. {name} — {d['count']}\n"
             bot.send_message(uid, text)
-
+        
         elif call.data == "admin_give_coins":
             bot.answer_callback_query(call.id)
             msg = bot.send_message(uid, "💰 Введите: ID количество")
             bot.register_next_step_handler(msg, give_coins)
+
+def send_reply(message, user_id):
+    reply_text = message.text.strip()
+    if not reply_text:
+        bot.send_message(message.chat.id, "❌ Ответ не может быть пустым!")
+        return
+    
+    try:
+        bot.send_message(user_id, f"📢 **Ответ администратора:**\n\n{reply_text}", parse_mode="Markdown")
+        bot.send_message(message.chat.id, f"✅ Ответ отправлен пользователю {user_id}")
+    except Exception as e:
+        bot.send_message(message.chat.id, f"❌ Ошибка при отправке: {e}")
 
 # =============== АДМИН-ФУНКЦИИ ===============
 def change_link(m):
@@ -361,7 +389,7 @@ def unban_user(m):
     except:
         bot.send_message(m.chat.id, "❌ Ошибка!")
 
-# =============== ОБРАБОТКА ЖАЛОБ (ПОЛНАЯ ВЕРСИЯ) ===============
+# =============== ОБРАБОТКА ЖАЛОБ ===============
 @bot.message_handler(func=lambda m: m.from_user.id in waiting_for_report)
 def handle_report(m):
     uid = m.from_user.id
@@ -388,31 +416,6 @@ def handle_report(m):
     
     bot.send_message(ADMIN_ID, admin_message, parse_mode="Markdown", reply_markup=keyboard)
 
-# =============== ОТВЕТ ПОЛЬЗОВАТЕЛЮ (ИСПРАВЛЕН) ===============
-@bot.callback_query_handler(func=lambda call: call.data.startswith('reply_'))
-def reply_to_user(call):
-    if not is_admin(call.from_user.id):
-        bot.answer_callback_query(call.id, "❌ Нет доступа!", show_alert=True)
-        return
-    
-    user_id = int(call.data.split('_')[1])
-    bot.answer_callback_query(call.id, "✏️ Введите текст ответа", show_alert=False)
-    
-    msg = bot.send_message(call.message.chat.id, f"✏️ Введите ответ для пользователя (ID: {user_id}):")
-    bot.register_next_step_handler(msg, lambda m: send_reply(m, user_id))
-
-def send_reply(message, user_id):
-    reply_text = message.text.strip()
-    if not reply_text:
-        bot.send_message(message.chat.id, "❌ Ответ не может быть пустым!")
-        return
-    
-    try:
-        bot.send_message(user_id, f"📢 **Ответ администратора:**\n\n{reply_text}", parse_mode="Markdown")
-        bot.send_message(message.chat.id, f"✅ Ответ отправлен пользователю {user_id}")
-    except Exception as e:
-        bot.send_message(message.chat.id, f"❌ Ошибка при отправке: {e}")
-
 # =============== WEBHOOK ===============
 @app.route(f'/{TOKEN}', methods=['POST'])
 def webhook():
@@ -432,7 +435,6 @@ if __name__ == "__main__":
     print(f"✅ Загружено: {len(coins_data)} кошельков, {len(message_tracker)} в трекере, {len(blacklist)} в ЧС")
     print(f"✅ Бот запущен! Команды: /start, /buy, /admin, /test")
     
-    # Уведомляем админа о запуске
     try:
         bot.send_message(ADMIN_ID, "✅ Бот запущен и работает! Жалобы будут приходить сюда.")
         print("✅ Уведомление админу отправлено")
