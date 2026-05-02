@@ -376,7 +376,6 @@ def handle_report(m):
     add_coins(uid, 50)
     bot.send_message(uid, "✅ Ваша жалоба отправлена администратору! +50 монет")
     
-    # Полная информация админу
     admin_message = f"📢 **НОВАЯ ЖАЛОБА!**\n\n"
     admin_message += f"👤 **От:** {user_name}\n"
     admin_message += f"🆔 **ID:** `{uid}`\n"
@@ -384,13 +383,12 @@ def handle_report(m):
     admin_message += f"📝 **Текст жалобы:**\n{report_text}\n"
     admin_message += f"⏰ **Время:** {time.strftime('%Y-%m-%d %H:%M:%S')}"
     
-    # Кнопка для ответа
     keyboard = types.InlineKeyboardMarkup()
     keyboard.add(types.InlineKeyboardButton("💬 Ответить пользователю", callback_data=f"reply_{uid}"))
     
     bot.send_message(ADMIN_ID, admin_message, parse_mode="Markdown", reply_markup=keyboard)
 
-# =============== ОТВЕТ ПОЛЬЗОВАТЕЛЮ ===============
+# =============== ОТВЕТ ПОЛЬЗОВАТЕЛЮ (ИСПРАВЛЕН) ===============
 @bot.callback_query_handler(func=lambda call: call.data.startswith('reply_'))
 def reply_to_user(call):
     if not is_admin(call.from_user.id):
@@ -398,17 +396,22 @@ def reply_to_user(call):
         return
     
     user_id = int(call.data.split('_')[1])
-    bot.answer_callback_query(call.id)
+    bot.answer_callback_query(call.id, "✏️ Введите текст ответа", show_alert=False)
+    
     msg = bot.send_message(call.message.chat.id, f"✏️ Введите ответ для пользователя (ID: {user_id}):")
     bot.register_next_step_handler(msg, lambda m: send_reply(m, user_id))
 
 def send_reply(message, user_id):
     reply_text = message.text.strip()
+    if not reply_text:
+        bot.send_message(message.chat.id, "❌ Ответ не может быть пустым!")
+        return
+    
     try:
         bot.send_message(user_id, f"📢 **Ответ администратора:**\n\n{reply_text}", parse_mode="Markdown")
         bot.send_message(message.chat.id, f"✅ Ответ отправлен пользователю {user_id}")
     except Exception as e:
-        bot.send_message(message.chat.id, f"❌ Ошибка: {e}")
+        bot.send_message(message.chat.id, f"❌ Ошибка при отправке: {e}")
 
 # =============== WEBHOOK ===============
 @app.route(f'/{TOKEN}', methods=['POST'])
@@ -428,6 +431,14 @@ if __name__ == "__main__":
     load_coins()
     print(f"✅ Загружено: {len(coins_data)} кошельков, {len(message_tracker)} в трекере, {len(blacklist)} в ЧС")
     print(f"✅ Бот запущен! Команды: /start, /buy, /admin, /test")
+    
+    # Уведомляем админа о запуске
+    try:
+        bot.send_message(ADMIN_ID, "✅ Бот запущен и работает! Жалобы будут приходить сюда.")
+        print("✅ Уведомление админу отправлено")
+    except:
+        print("⚠️ Админ не начал диалог с ботом! Напишите боту /start, чтобы получать жалобы.")
+    
     bot.remove_webhook()
     time.sleep(1)
     webhook_url = f"https://{os.environ.get('RENDER_EXTERNAL_HOSTNAME', 'bot-tg-1-x4tg.onrender.com')}/{TOKEN}"
