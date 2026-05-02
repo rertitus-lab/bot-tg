@@ -196,7 +196,7 @@ def cancel(m):
         del waiting_for_report[uid]
         bot.reply_to(m, "❌ Отменено")
 
-# =============== КОЛЕСО ФОРТУНЫ ===============
+# =============== КОЛЕСО ФОРТУНЫ (50% победа) ===============
 @bot.callback_query_handler(func=lambda call: call.data == "fortune_wheel")
 def fortune_wheel_menu(call):
     uid = call.from_user.id
@@ -216,7 +216,7 @@ def fortune_wheel_menu(call):
     )
     
     bot.answer_callback_query(call.id)
-    bot.send_message(uid, f"🎰 **Колесо фортуны**\n\n💰 Твой баланс: {coins} монет\n\nВыбери ставку:", parse_mode="Markdown", reply_markup=kb)
+    bot.send_message(uid, f"🎰 **Колесо фортуны**\n\n💰 Твой баланс: {coins} монет\n\nВыбери ставку (шанс победы 50%):", parse_mode="Markdown", reply_markup=kb)
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith("fortune_"))
 def fortune_spin(call):
@@ -238,25 +238,26 @@ def fortune_spin(call):
     # Анимация "вращения"
     bot.answer_callback_query(call.id, "🎰 Колесо крутится...", show_alert=False)
     
-    # Призы в зависимости от ставки
-    if bet == 10:
-        prizes = [10, 20, 50, 100]
-    elif bet == 50:
-        prizes = [25, 50, 100, 250]
-    elif bet == 100:
-        prizes = [50, 100, 200, 500]
-    elif bet == 300:
-        prizes = [150, 300, 600, 1500]
-    else:
-        prizes = [10, 20, 50, 100]
+    # Шанс победы 50% / проигрыша 50%
+    is_win = random.choice([True, False])
     
-    win = random.choice(prizes)
-    
-    # Списываем ставку
-    remove_coins(uid, bet)
-    
-    if win >= bet:
-        # Выигрыш
+    if is_win:
+        # Призы в зависимости от ставки (при победе)
+        if bet == 10:
+            prizes = [10, 20, 50, 100]
+        elif bet == 50:
+            prizes = [50, 100, 150, 250]
+        elif bet == 100:
+            prizes = [100, 200, 300, 500]
+        elif bet == 300:
+            prizes = [300, 600, 900, 1500]
+        else:
+            prizes = [10, 20, 50, 100]
+        
+        win = random.choice(prizes)
+        
+        # Списываем ставку и добавляем выигрыш
+        remove_coins(uid, bet)
         add_coins(uid, win)
         final_coins = get_coins(uid)
         
@@ -268,13 +269,13 @@ def fortune_spin(call):
         
         bot.send_message(uid, result_text, parse_mode="Markdown")
     else:
-        # Проигрыш
+        # Проигрыш — теряем ставку
+        remove_coins(uid, bet)
         final_coins = get_coins(uid)
         
         result_text = f"😔 **ПРОИГРЫШ!** 😔\n\n"
         result_text += f"💰 Ставка: {bet} монет\n"
-        result_text += f"🏆 Выигрыш: {win} монет\n"
-        result_text += f"💵 Потеряно: -{bet - win} монет\n"
+        result_text += f"💵 Потеряно: -{bet} монет\n"
         result_text += f"💰 Новый баланс: {final_coins} монет"
         
         bot.send_message(uid, result_text, parse_mode="Markdown")
