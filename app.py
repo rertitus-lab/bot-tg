@@ -33,7 +33,6 @@ COINS_FILE = "coins.txt"
 
 # =============== ФУНКЦИЯ ГЕНЕРАЦИИ КЛЮЧА ===============
 def generate_key():
-    """Генерирует случайный ключ в формате XXXX-XXXX-XXXX-XXXX"""
     parts = []
     for _ in range(4):
         part = ''.join(random.choices(string.ascii_uppercase + string.digits, k=4))
@@ -146,7 +145,6 @@ def start(m):
     )
     bot.send_message(uid, "Crack Sbornik - 💥 лучший сборник кряков именно для тебя!", reply_markup=kb)
 
-# =============== ОСНОВНАЯ КОМАНДА /buy (ИСПРАВЛЕНА) ===============
 @bot.message_handler(commands=['buy'])
 def buy(m):
     uid = m.from_user.id
@@ -160,8 +158,6 @@ def buy(m):
     if coins >= CRACK_PLUS_PRICE:
         remove_coins(uid, CRACK_PLUS_PRICE)
         key = generate_key()
-        
-        # ПРОСТОЕ СООБЩЕНИЕ С ССЫЛКОЙ И КЛЮЧОМ
         bot.send_message(uid, f"🎉 CRACK PLUS КУПЛЕН!\n\n🔗 ссылка на crack plus:\n{CRACK_PLUS_LINK}\n\n🔑 ключ активации: {key}\n\n💰 Остаток монет: {get_coins(uid)}")
     else:
         bot.send_message(uid, f"❌ Не хватает монет! У вас {coins}, надо {CRACK_PLUS_PRICE}")
@@ -365,16 +361,51 @@ def unban_user(m):
     except:
         bot.send_message(m.chat.id, "❌ Ошибка!")
 
-# =============== ОБРАБОТКА ЖАЛОБ ===============
+# =============== ОБРАБОТКА ЖАЛОБ (ПОЛНАЯ ВЕРСИЯ) ===============
 @bot.message_handler(func=lambda m: m.from_user.id in waiting_for_report)
 def handle_report(m):
     uid = m.from_user.id
-    text = m.text.strip()
+    user_name = m.from_user.first_name
+    user_username = f"@{m.from_user.username}" if m.from_user.username else "нет username"
+    report_text = m.text.strip()
+    
     if uid in waiting_for_report:
         del waiting_for_report[uid]
-    bot.send_message(uid, "✅ Жалоба отправлена!")
-    bot.send_message(ADMIN_ID, f"📢 ЖАЛОБА от {m.from_user.first_name} (ID: {uid})\nТекст: {text}")
+    
+    update_message_count(uid, m.from_user.username or "", m.from_user.first_name)
     add_coins(uid, 50)
+    bot.send_message(uid, "✅ Ваша жалоба отправлена администратору! +50 монет")
+    
+    admin_message = f"📢 **НОВАЯ ЖАЛОБА!**\n\n"
+    admin_message += f"👤 **От:** {user_name}\n"
+    admin_message += f"🆔 **ID:** `{uid}`\n"
+    admin_message += f"📱 **Username:** {user_username}\n"
+    admin_message += f"📝 **Текст жалобы:**\n{report_text}\n"
+    admin_message += f"⏰ **Время:** {time.strftime('%Y-%m-%d %H:%M:%S')}"
+    
+    keyboard = types.InlineKeyboardMarkup()
+    keyboard.add(types.InlineKeyboardButton("💬 Ответить пользователю", callback_data=f"reply_{uid}"))
+    bot.send_message(ADMIN_ID, admin_message, parse_mode="Markdown", reply_markup=keyboard)
+
+# =============== ОТВЕТ ПОЛЬЗОВАТЕЛЮ ===============
+@bot.callback_query_handler(func=lambda call: call.data.startswith('reply_'))
+def reply_to_user(call):
+    if not is_admin(call.from_user.id):
+        bot.answer_callback_query(call.id, "❌ Нет доступа!", show_alert=True)
+        return
+    
+    user_id = int(call.data.split('_')[1])
+    bot.answer_callback_query(call.id)
+    msg = bot.send_message(call.message.chat.id, f"✏️ Введите ответ для пользователя (ID: {user_id}):")
+    bot.register_next_step_handler(msg, lambda m: send_reply(m, user_id))
+
+def send_reply(message, user_id):
+    reply_text = message.text.strip()
+    try:
+        bot.send_message(user_id, f"📢 **Ответ администратора:**\n\n{reply_text}", parse_mode="Markdown")
+        bot.send_message(message.chat.id, f"✅ Ответ отправлен пользователю {user_id}")
+    except Exception as e:
+        bot.send_message(message.chat.id, f"❌ Ошибка: {e}")
 
 # =============== WEBHOOK ===============
 @app.route(f'/{TOKEN}', methods=['POST'])
