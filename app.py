@@ -45,6 +45,7 @@ def load_blacklist():
     if os.path.exists(BLACKLIST_FILE):
         with open(BLACKLIST_FILE, 'r') as f:
             blacklist = set(int(line.strip()) for line in f if line.strip())
+    print(f"✅ Загружен ЧС: {len(blacklist)} пользователей")
 
 def save_blacklist():
     with open(BLACKLIST_FILE, 'w') as f:
@@ -59,11 +60,19 @@ def load_messages():
                 if '|' in line:
                     uid, count, username, name = line.strip().split('|')
                     message_tracker[int(uid)] = {"count": int(count), "username": username, "name": name}
+    print(f"✅ Загружен трекер: {len(message_tracker)} пользователей")
 
 def save_messages():
     with open(MESSAGE_FILE, 'w') as f:
         for uid, data in message_tracker.items():
             f.write(f"{uid}|{data['count']}|{data['username']}|{data['name']}\n")
+
+def update_message_count(uid, username, name):
+    if uid in message_tracker:
+        message_tracker[uid]["count"] += 1
+    else:
+        message_tracker[uid] = {"count": 1, "username": username or "", "name": name}
+    save_messages()
 
 def load_coins():
     global coins_data
@@ -73,6 +82,7 @@ def load_coins():
                 if '|' in line:
                     uid, val = line.strip().split('|')
                     coins_data[int(uid)] = int(val)
+    print(f"✅ Загружены монеты: {len(coins_data)} пользователей")
 
 def save_coins():
     with open(COINS_FILE, 'w') as f:
@@ -93,13 +103,6 @@ def remove_coins(uid, amt):
         return True
     return False
 
-def update_message_count(uid, username, name):
-    if uid in message_tracker:
-        message_tracker[uid]["count"] += 1
-    else:
-        message_tracker[uid] = {"count": 1, "username": username or "", "name": name}
-    save_messages()
-
 def check_cd(uid):
     now = time.time()
     if uid in user_last_use and now - user_last_use[uid] < 5:
@@ -109,23 +112,23 @@ def check_cd(uid):
 def update_cd(uid):
     user_last_use[uid] = time.time()
 
-def count_message(func):
-    def wrapper(m):
-        uid = m.from_user.id
-        if not is_admin(uid):
-            update_message_count(uid, m.from_user.username or "", m.from_user.first_name)
-        return func(m)
-    return wrapper
+# =============== ФУНКЦИЯ ТРЕКЕРА (РУЧНОЙ ВЫЗОВ) ===============
+def track_user(message):
+    uid = message.from_user.id
+    if not is_admin(uid):
+        update_message_count(uid, message.from_user.username or "", message.from_user.first_name)
+        print(f"✅ Трекер: +1 сообщение от {uid} ({message.from_user.first_name})")
 
 # =============== ДИАГНОСТИКА ===============
 @bot.message_handler(commands=['test'])
 def test_command(m):
+    track_user(m)
     bot.send_message(m.chat.id, "✅ Бот работает! Команды: /start, /buy, /admin")
 
 # =============== КОМАНДЫ ===============
 @bot.message_handler(commands=['start'])
-@count_message
 def start(m):
+    track_user(m)
     uid = m.from_user.id
     if is_banned(uid):
         bot.send_message(uid, "❌ Вы забанены!")
@@ -147,6 +150,7 @@ def start(m):
 
 @bot.message_handler(commands=['buy'])
 def buy(m):
+    track_user(m)
     uid = m.from_user.id
     
     if is_banned(uid):
@@ -163,8 +167,8 @@ def buy(m):
         bot.send_message(uid, f"❌ Не хватает монет! У вас {coins}, надо {CRACK_PLUS_PRICE}")
 
 @bot.message_handler(commands=['admin'])
-@count_message
 def admin(m):
+    track_user(m)
     if not is_admin(m.from_user.id):
         bot.send_message(m.chat.id, "❌ Нет доступа!")
         return
@@ -184,8 +188,8 @@ def admin(m):
     bot.send_message(m.chat.id, "🔧 Админ-панель", reply_markup=kb)
 
 @bot.message_handler(commands=['cancel'])
-@count_message
 def cancel(m):
+    track_user(m)
     uid = m.from_user.id
     if uid in waiting_for_report:
         del waiting_for_report[uid]
@@ -292,14 +296,14 @@ def callback(call):
         elif call.data == "admin_tracker":
             bot.answer_callback_query(call.id)
             if not message_tracker:
-                bot.send_message(uid, "📊 Нет данных")
+                bot.send_message(uid, "📊 Нет данных о сообщениях.")
                 return
             top = sorted(message_tracker.items(), key=lambda x: x[1]["count"], reverse=True)[:20]
-            text = "📊 Топ по сообщениям:\n"
+            text = "📊 **Топ пользователей по сообщениям:**\n\n"
             for i, (uidd, d) in enumerate(top, 1):
                 name = d.get('username') or d.get('name', str(uidd))[:15]
-                text += f"{i}. {name} — {d['count']}\n"
-            bot.send_message(uid, text)
+                text += f"{i}. {name} — {d['count']} сообщений\n"
+            bot.send_message(uid, text, parse_mode="Markdown")
         
         elif call.data == "admin_give_coins":
             bot.answer_callback_query(call.id)
@@ -390,6 +394,7 @@ def unban_user(m):
 # =============== ОБРАБОТКА ЖАЛОБ ===============
 @bot.message_handler(func=lambda m: m.from_user.id in waiting_for_report)
 def handle_report(m):
+    track_user(m)
     uid = m.from_user.id
     user_name = m.from_user.first_name
     user_username = f"@{m.from_user.username}" if m.from_user.username else "нет username"
@@ -398,7 +403,6 @@ def handle_report(m):
     if uid in waiting_for_report:
         del waiting_for_report[uid]
     
-    update_message_count(uid, m.from_user.username or "", m.from_user.first_name)
     add_coins(uid, 50)
     bot.send_message(uid, "✅ Ваша жалоба отправлена администратору! +50 монет")
     
