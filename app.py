@@ -36,7 +36,7 @@ COINS_FILE = "coins.txt"
 ttt_games = {}
 
 # Логирование действий пользователей
-user_stats = {}  # {user_id: {"name": "имя", "username": "username", "admin_give": 0, "admin_take": 0, "fortune_win": 0, "ttt_win": 0, "download": 0, "report": 0}}
+user_stats = {}
 STATS_FILE = "user_stats.txt"
 
 # =============== ФУНКЦИЯ ГЕНЕРАЦИИ КЛЮЧА ===============
@@ -108,8 +108,6 @@ def load_stats():
                     if len(parts) >= 7:
                         uid = int(parts[0])
                         user_stats[uid] = {
-                            "name": parts[1],
-                            "username": parts[2],
                             "admin_give": int(parts[3]),
                             "admin_take": int(parts[4]),
                             "fortune_win": int(parts[5]),
@@ -122,21 +120,11 @@ def load_stats():
 def save_stats():
     with open(STATS_FILE, 'w') as f:
         for uid, data in user_stats.items():
-            f.write(f"{uid}|{data['name']}|{data['username']}|{data['admin_give']}|{data['admin_take']}|{data['fortune_win']}|{data['ttt_win']}|{data['download']}|{data['report']}\n")
+            f.write(f"{uid}|{uid}|{uid}|{data['admin_give']}|{data['admin_take']}|{data['fortune_win']}|{data['ttt_win']}|{data['download']}|{data['report']}\n")
 
 def update_user_stat(uid, stat_name, amount):
-    """Обновляет статистику пользователя"""
     if uid not in user_stats:
-        try:
-            user = bot.get_chat(uid)
-            name = user.first_name
-            username = user.username or ""
-        except:
-            name = str(uid)
-            username = ""
         user_stats[uid] = {
-            "name": name,
-            "username": username,
             "admin_give": 0,
             "admin_take": 0,
             "fortune_win": 0,
@@ -538,7 +526,7 @@ def cancel(m):
         del waiting_for_report[uid]
         bot.reply_to(m, "❌ Отменено")
 
-# =============== ПОКАЗ ЛОГОВ ДЕЙСТВИЙ ===============
+# =============== ПОКАЗ ЛОГОВ ДЕЙСТВИЙ (С ID ВМЕСТО ИМЕНИ) ===============
 @bot.callback_query_handler(func=lambda call: call.data == "admin_stats_log")
 def show_user_stats(call):
     if not is_admin(call.from_user.id):
@@ -553,27 +541,17 @@ def show_user_stats(call):
     
     sorted_users = sorted(user_stats.items(), key=lambda x: get_coins(x[0]), reverse=True)
     
-    text = "📊 **Логи действий пользователей:**\n\n"
-    text += "`{:<15} {:>10} {:>10} {:>10} {:>12} {:>10}`\n".format("Пользователь", "✅Выдано", "❌Забрано", "🎰Фортуна", "❌⭕Крестики", "💰Баланс")
-    text += "`" + "-" * 75 + "`\n"
+    text = "📊 *Логи действий пользователей:*\n\n"
     
     for uid, data in sorted_users[:30]:
-        name = data['name'][:12] if data['name'] else str(uid)[:12]
         balance = get_coins(uid)
-        text += "`{:<15} {:>10} {:>10} {:>10} {:>12} {:>10}`\n".format(
-            name,
-            data['admin_give'],
-            data['admin_take'],
-            data['fortune_win'],
-            data['ttt_win'],
-            balance
-        )
-    
-    text += "\n`✅Выдано` — монет от админа\n"
-    text += "`❌Забрано` — монет у пользователя\n"
-    text += "`🎰Фортуна` — выигрыш в Колесе фортуны\n"
-    text += "`❌⭕Крестики` — выигрыш в Крестиках-ноликах\n"
-    text += "`💰Баланс` — текущий баланс монет"
+        
+        text += f"👤 *ID: {uid}*\n"
+        text += f"   ✅ Выдано от админа: {data['admin_give']} монет\n"
+        text += f"   ❌ Забрано админом: {data['admin_take']} монет\n"
+        text += f"   🎰 Выигрыш в Фортуне: {data['fortune_win']} монет\n"
+        text += f"   ❌⭕ Выигрыш в Крестиках: {data['ttt_win']} монет\n"
+        text += f"   💰 Текущий баланс: {balance} монет\n\n"
     
     bot.send_message(call.message.chat.id, text, parse_mode="Markdown")
 
