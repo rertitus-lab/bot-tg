@@ -467,7 +467,8 @@ def admin(m):
         types.InlineKeyboardButton("✅ Разбанить", callback_data="admin_unban"),
         types.InlineKeyboardButton("📋 Список ЧС", callback_data="admin_banlist"),
         types.InlineKeyboardButton("📊 Трекер", callback_data="admin_tracker"),
-        types.InlineKeyboardButton("💰 Выдать монеты", callback_data="admin_give_coins")
+        types.InlineKeyboardButton("💰 Выдать монеты", callback_data="admin_give_coins"),
+        types.InlineKeyboardButton("💰 Забрать монеты", callback_data="admin_take_coins")
     )
     bot.send_message(m.chat.id, "🔧 Админ-панель", reply_markup=kb)
 
@@ -478,6 +479,87 @@ def cancel(m):
     if uid in waiting_for_report:
         del waiting_for_report[uid]
         bot.reply_to(m, "❌ Отменено")
+
+# =============== ЗАБРАТЬ МОНЕТЫ (АДМИН) ===============
+@bot.callback_query_handler(func=lambda call: call.data == "admin_take_coins")
+def take_coins_menu(call):
+    if not is_admin(call.from_user.id):
+        bot.answer_callback_query(call.id, "❌ Нет доступа!", True)
+        return
+    
+    bot.answer_callback_query(call.id)
+    msg = bot.send_message(call.message.chat.id, "💰 Введите ID пользователя и количество монет через пробел\n\nПример: `123456789 500`\n(у пользователя будет списано указанное количество)", parse_mode="Markdown")
+    bot.register_next_step_handler(msg, process_take_coins)
+
+def process_take_coins(message):
+    try:
+        parts = message.text.strip().split()
+        if len(parts) != 2:
+            bot.send_message(message.chat.id, "❌ Ошибка! Введите ID и сумму через пробел\nПример: `123456789 500`", parse_mode="Markdown")
+            return
+        
+        user_id = int(parts[0])
+        amount = int(parts[1])
+        
+        if amount < 1:
+            bot.send_message(message.chat.id, "❌ Сумма должна быть больше 0!")
+            return
+        
+        current_coins = get_coins(user_id)
+        
+        if current_coins < amount:
+            bot.send_message(message.chat.id, f"❌ У пользователя `{user_id}` недостаточно монет!\n💰 Баланс: {current_coins} монет\n📤 Запрошено к списанию: {amount}", parse_mode="Markdown")
+            return
+        
+        remove_coins(user_id, amount)
+        bot.send_message(message.chat.id, f"✅ У пользователя `{user_id}` списано {amount} монет!\n💰 Новый баланс: {get_coins(user_id)}", parse_mode="Markdown")
+        
+        # Уведомляем пользователя
+        try:
+            bot.send_message(user_id, f"💰 У вас списано {amount} монет администратором!\n💰 Ваш баланс: {get_coins(user_id)}")
+        except:
+            pass
+    except ValueError:
+        bot.send_message(message.chat.id, "❌ Ошибка! Введите ID (число) и сумму (число)")
+    except Exception as e:
+        bot.send_message(message.chat.id, f"❌ Ошибка: {e}")
+
+# =============== ВЫДАЧА МОНЕТ (АДМИН) ===============
+@bot.callback_query_handler(func=lambda call: call.data == "admin_give_coins")
+def give_coins_menu(call):
+    if not is_admin(call.from_user.id):
+        bot.answer_callback_query(call.id, "❌ Нет доступа!", True)
+        return
+    
+    bot.answer_callback_query(call.id)
+    msg = bot.send_message(call.message.chat.id, "💰 Введите ID пользователя и количество монет через пробел\n\nПример: `123456789 500`\nСумма от 1 до 100000", parse_mode="Markdown")
+    bot.register_next_step_handler(msg, process_give_coins)
+
+def process_give_coins(message):
+    try:
+        parts = message.text.strip().split()
+        if len(parts) != 2:
+            bot.send_message(message.chat.id, "❌ Ошибка! Введите ID и сумму через пробел\nПример: `123456789 500`", parse_mode="Markdown")
+            return
+        
+        user_id = int(parts[0])
+        amount = int(parts[1])
+        
+        if amount < 1 or amount > 100000:
+            bot.send_message(message.chat.id, "❌ Сумма должна быть от 1 до 100000 монет!")
+            return
+        
+        add_coins(user_id, amount)
+        bot.send_message(message.chat.id, f"✅ Пользователю `{user_id}` выдано {amount} монет!\n💰 Баланс: {get_coins(user_id)}", parse_mode="Markdown")
+        
+        try:
+            bot.send_message(user_id, f"💰 Вам начислено {amount} монет!\n💰 Ваш баланс: {get_coins(user_id)}")
+        except:
+            pass
+    except ValueError:
+        bot.send_message(message.chat.id, "❌ Ошибка! Введите ID (число) и сумму (число)")
+    except Exception as e:
+        bot.send_message(message.chat.id, f"❌ Ошибка: {e}")
 
 # =============== ОБРАБОТЧИК КНОПОК ===============
 @bot.callback_query_handler(func=lambda call: True)
@@ -500,7 +582,7 @@ def callback(call):
         return
     
     # Исключения для КД
-    if call.data not in ["balance", "crack_plus", "fortune_wheel", "fortune_10", "fortune_50", "fortune_100", "fortune_300", "fortune_5000", "fortune_10000", "tic_tac_toe", "ttt_bet_50", "ttt_bet_100", "ttt_bet_300", "ttt_bet_1000", "ttt_bet_2000", "ttt_bet_10000"]:
+    if call.data not in ["balance", "crack_plus", "fortune_wheel", "fortune_10", "fortune_50", "fortune_100", "fortune_300", "fortune_5000", "fortune_10000", "tic_tac_toe", "ttt_bet_50", "ttt_bet_100", "ttt_bet_300", "ttt_bet_1000", "ttt_bet_2000", "ttt_bet_10000", "admin_give_coins", "admin_take_coins"]:
         cd = check_cd(uid)
         if cd > 0:
             bot.answer_callback_query(call.id, f"⏳ {cd} сек!", True)
@@ -536,7 +618,7 @@ def callback(call):
         bot.send_message(uid, "✍️ Напишите текст жалобы (/cancel для отмены)")
     
     # Админ-кнопки
-    elif is_admin(uid) and call.data.startswith('admin_'):
+    elif is_admin(uid) and call.data.startswith('admin_') and call.data not in ["admin_give_coins", "admin_take_coins"]:
         if call.data == "admin_stats":
             bot.answer_callback_query(call.id)
             bot.send_message(uid, f"📊 Статистика:\n📥 Скачиваний: {download_count}\n👥 Пользователей: {len(users)}")
@@ -588,11 +670,6 @@ def callback(call):
                 name = d.get('username') or d.get('name', str(uidd))[:15]
                 text += f"{i}. {name} — {d['count']} сообщений\n"
             bot.send_message(uid, text, parse_mode="Markdown")
-        
-        elif call.data == "admin_give_coins":
-            bot.answer_callback_query(call.id)
-            msg = bot.send_message(uid, "💰 Введите: ID количество")
-            bot.register_next_step_handler(msg, give_coins)
 
 def send_reply(message, user_id):
     reply_text = message.text.strip()
@@ -615,18 +692,6 @@ def change_image(m):
     global IMAGE_URL
     IMAGE_URL = m.text.strip()
     bot.send_message(m.chat.id, f"✅ Картинка изменена!")
-
-def give_coins(m):
-    try:
-        uid, amt = map(int, m.text.split())
-        add_coins(uid, amt)
-        bot.send_message(m.chat.id, f"✅ Выдано {amt} монет пользователю {uid}\n💰 Баланс: {get_coins(uid)}")
-        try:
-            bot.send_message(uid, f"💰 Вам начислено {amt} монет! Баланс: {get_coins(uid)}")
-        except:
-            pass
-    except:
-        bot.send_message(m.chat.id, "❌ Ошибка! Пример: 123456789 500")
 
 def broadcast(m):
     text = m.text.strip()
