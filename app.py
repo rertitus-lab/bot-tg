@@ -14,7 +14,7 @@ ADMIN_ID = 7859226148  # ⚠️ ЗАМЕНИ НА СВОЙ ID
 SOFT_LINK = "https://www.mediafire.com/file/giyvpt6yuy9so7m/Crack_Sbornik.exe/file"
 IMAGE_URL = "https://i.ibb.co/YBXZt30f/ggdoksraz.png"
 CRACK_PLUS_LINK = "https://www.mediafire.com/file/2w6a3y18ke8vr94/Crack_Plus.exe/file"
-CRACK_PLUS_PRICE = 2500
+CRACK_PLUS_PRICE = 60000  # ИЗМЕНЕНО НА 60000
 
 # =============== ИНИЦИАЛИЗАЦИЯ ===============
 bot = telebot.TeleBot(TOKEN)
@@ -399,7 +399,7 @@ def back_to_menu(call):
     
     kb = types.InlineKeyboardMarkup(row_width=1)
     kb.add(
-        types.InlineKeyboardButton("📥 Скачать софт", callback_data="download"),
+        types.InlineKeyboardButton("📥 Crack Free", callback_data="download"),  # ИЗМЕНЕНО
         types.InlineKeyboardButton("🎯 Подробнее", callback_data="more"),
         types.InlineKeyboardButton("👥 Поделиться", callback_data="share"),
         types.InlineKeyboardButton("📢 Репорт", callback_data="report"),
@@ -424,7 +424,7 @@ def start(m):
 
     kb = types.InlineKeyboardMarkup(row_width=1)
     kb.add(
-        types.InlineKeyboardButton("📥 Скачать софт", callback_data="download"),
+        types.InlineKeyboardButton("📥 Crack Free", callback_data="download"),  # ИЗМЕНЕНО
         types.InlineKeyboardButton("🎯 Подробнее", callback_data="more"),
         types.InlineKeyboardButton("👥 Поделиться", callback_data="share"),
         types.InlineKeyboardButton("📢 Репорт", callback_data="report"),
