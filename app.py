@@ -188,6 +188,7 @@ def tic_tac_toe_menu(call):
         types.InlineKeyboardButton("🎲 300 монет", callback_data="ttt_bet_300"),
         types.InlineKeyboardButton("🎲 1000 монет", callback_data="ttt_bet_1000"),
         types.InlineKeyboardButton("🎲 2000 монет", callback_data="ttt_bet_2000"),
+        types.InlineKeyboardButton("🎲 10000 монет", callback_data="ttt_bet_10000"),
         types.InlineKeyboardButton("🔙 Назад", callback_data="back_to_menu")
     )
     
@@ -487,7 +488,7 @@ def callback(call):
         return
     
     # Исключения для КД
-    if call.data not in ["balance", "crack_plus", "fortune_wheel", "fortune_10", "fortune_50", "fortune_100", "fortune_300", "tic_tac_toe", "ttt_bet_50", "ttt_bet_100", "ttt_bet_300", "ttt_bet_1000", "ttt_bet_2000"]:
+    if call.data not in ["balance", "crack_plus", "fortune_wheel", "fortune_10", "fortune_50", "fortune_100", "fortune_300", "tic_tac_toe", "ttt_bet_50", "ttt_bet_100", "ttt_bet_300", "ttt_bet_1000", "ttt_bet_2000", "ttt_bet_10000"]:
         cd = check_cd(uid)
         if cd > 0:
             bot.answer_callback_query(call.id, f"⏳ {cd} сек!", True)
