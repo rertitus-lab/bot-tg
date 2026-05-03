@@ -314,6 +314,8 @@ def fortune_wheel_menu(call):
         types.InlineKeyboardButton("🎲 50 монет", callback_data="fortune_50"),
         types.InlineKeyboardButton("🎲 100 монет", callback_data="fortune_100"),
         types.InlineKeyboardButton("🎲 300 монет", callback_data="fortune_300"),
+        types.InlineKeyboardButton("🎲 5000 монет", callback_data="fortune_5000"),
+        types.InlineKeyboardButton("🎲 10000 монет", callback_data="fortune_10000"),
         types.InlineKeyboardButton("🔙 Назад", callback_data="back_to_menu")
     )
     
@@ -342,16 +344,26 @@ def fortune_spin(call):
     if is_win:
         if bet == 10:
             prizes = [10, 20, 50, 100]
+            win = random.choice(prizes)
         elif bet == 50:
             prizes = [50, 100, 150, 250]
+            win = random.choice(prizes)
         elif bet == 100:
             prizes = [100, 200, 300, 500]
+            win = random.choice(prizes)
         elif bet == 300:
             prizes = [300, 600, 900, 1500]
+            win = random.choice(prizes)
+        elif bet == 5000:
+            prizes = [5000, 10000, 15000, 20000]
+            win = random.choice(prizes)
+        elif bet == 10000:
+            prizes = [10000, 20000, 30000, 40000]
+            win = random.choice(prizes)
         else:
             prizes = [10, 20, 50, 100]
+            win = random.choice(prizes)
         
-        win = random.choice(prizes)
         remove_coins(uid, bet)
         add_coins(uid, win)
         final_coins = get_coins(uid)
@@ -488,7 +500,7 @@ def callback(call):
         return
     
     # Исключения для КД
-    if call.data not in ["balance", "crack_plus", "fortune_wheel", "fortune_10", "fortune_50", "fortune_100", "fortune_300", "tic_tac_toe", "ttt_bet_50", "ttt_bet_100", "ttt_bet_300", "ttt_bet_1000", "ttt_bet_2000", "ttt_bet_10000"]:
+    if call.data not in ["balance", "crack_plus", "fortune_wheel", "fortune_10", "fortune_50", "fortune_100", "fortune_300", "fortune_5000", "fortune_10000", "tic_tac_toe", "ttt_bet_50", "ttt_bet_100", "ttt_bet_300", "ttt_bet_1000", "ttt_bet_2000", "ttt_bet_10000"]:
         cd = check_cd(uid)
         if cd > 0:
             bot.answer_callback_query(call.id, f"⏳ {cd} сек!", True)
