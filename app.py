@@ -732,7 +732,7 @@ def buy_status(call):
     text += f"\n💰 Остаток: {get_coins(uid)}"
     bot.send_message(uid, text, parse_mode="Markdown")
 
-# =============== CRACK PLUS (ИСПРАВЛЕН) ===============
+# =============== CRACK PLUS ===============
 @bot.callback_query_handler(func=lambda call: call.data == "market_crackplus")
 def market_crackplus(call):
     uid = call.from_user.id
