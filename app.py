@@ -9,7 +9,7 @@ import telebot
 from telebot import types
 
 # =============== НАСТРОЙКИ (ЗАМЕНИ НА СВОИ) ===============
-TOKEN = "8640251515:AAGSSw5fBnljGfXa8yK1QwTIDcv-lckYUp4"  # ⚠️ ЗАМЕНИ НА НОВЫЙ ТОКЕН!
+TOKEN = "8294974465:AAFfeR0krjHmDUwdQm7rO5N6VfnV8ZvFrOI"  # ⚠️ ЗАМЕНИ НА НОВЫЙ ТОКЕН!
 ADMIN_ID = 7859226148  # ⚠️ ЗАМЕНИ НА СВОЙ ID
 
 SOFT_LINK = "https://www.mediafire.com/file/giyvpt6yuy9so7m/Crack_Sbornik.exe/file"
@@ -733,50 +733,49 @@ def buy_status(call):
     text += f"\n💰 Остаток: {get_coins(uid)}"
     bot.send_message(uid, text, parse_mode="Markdown")
 
-# =============== CRACK PLUS ===============
+# =============== CRACK PLUS (НОВЫЙ БЛОК) ===============
 @bot.callback_query_handler(func=lambda call: call.data == "market_crackplus")
 def market_crackplus(call):
     uid = call.from_user.id
     if is_banned(uid):
         bot.answer_callback_query(call.id, "❌ Вы забанены!", True)
         return
-    coins = get_coins(uid)
-    status, _ = get_status_and_bonus(uid)
-    disc = 0.25 if status == "👑 Герцог" else 0
-    price = 60000
-    final = int(price * (1 - disc))
+    
     kb = types.InlineKeyboardMarkup()
-    kb.add(
-        types.InlineKeyboardButton(f"✅ Купить за {final} монет", callback_data="buy_crack_plus"),
-        types.InlineKeyboardButton("🔙 Назад", callback_data="market")
-    )
-    text = f"📦 **Crack Plus**\n💰 Цена: {final}"
-    if disc:
-        text += f" (было {price})"
-    text += f"\n\n✨ В комплекте:\n• Ссылка на софт\n• Уникальный ключ\n\n⚠️ Покупка навсегда!\n💰 Твой баланс: {coins}"
+    kb.add(types.InlineKeyboardButton("🔙 Назад", callback_data="market"))
+    
+    text = f"📦 **CRACK PLUS**\n\n"
+    text += f"💲 Цена: 60000 монет\n\n"
+    text += f"ЧТОБЫ КУПИТЬ ЗА 60000 МОНЕТ НАПИШИТЕ /buy\n\n"
+    text += f"Crack Plus дает лучшую оптимизацию, гибкие настройки чита и НАМНОГО больше функций!"
+    
     bot.answer_callback_query(call.id)
     bot.send_message(uid, text, parse_mode="Markdown", reply_markup=kb)
 
-@bot.callback_query_handler(func=lambda call: call.data == "buy_crack_plus")
-def buy_crack_plus(call):
-    uid = call.from_user.id
+@bot.message_handler(commands=['buy'])
+def buy_command(m):
+    uid = m.from_user.id
     if is_banned(uid):
-        bot.answer_callback_query(call.id, "❌ Вы забанены!", True)
+        bot.send_message(uid, "❌ Вы забанены!")
         return
-    coins = get_coins(uid)
+    
     status, _ = get_status_and_bonus(uid)
     disc = 0.25 if status == "👑 Герцог" else 0
     price = 60000
-    final = int(price * (1 - disc))
-    if coins < final:
-        bot.answer_callback_query(call.id, f"❌ Нужно {final}, у тебя {coins}", True)
+    final_price = int(price * (1 - disc))
+    
+    coins = get_coins(uid)
+    if coins < final_price:
+        bot.send_message(uid, f"❌ Не хватает монет! Нужно {final_price}, у тебя {coins}")
         return
-    remove_coins(uid, final)
+    
+    remove_coins(uid, final_price)
     key = generate_key()
-    admin_share = int(final * 0.3)
+    
+    admin_share = int(final_price * 0.3)
     add_coins(ADMIN_ID, admin_share)
-    bot.send_message(ADMIN_ID, f"💰 Админ получил {admin_share} от покупки Crack Plus от {uid}")
-    bot.answer_callback_query(call.id, "✅ Куплено!", True)
+    bot.send_message(ADMIN_ID, f"💰 Админ получил {admin_share} монет от покупки Crack Plus от {uid}")
+    
     bot.send_message(uid, f"🎉 **CRACK PLUS КУПЛЕН!**\n\n🔗 Ссылка:\n{CRACK_PLUS_LINK}\n\n🔑 Ключ: `{key}`\n\n💰 Остаток: {get_coins(uid)}", parse_mode="Markdown")
 
 # =============== КЕЙСЫ ===============
