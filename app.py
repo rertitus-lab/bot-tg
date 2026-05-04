@@ -321,28 +321,34 @@ def start_ttt_game(call):
 def ttt_move(call):
     uid = call.from_user.id
     cell = int(call.data.split('_')[1])
+    
     if uid not in ttt_games:
         bot.answer_callback_query(call.id, "❌ Игра не найдена!", True)
         return
+    
     game = ttt_games[uid]
     board = game["board"]
     chat_id = game["chat_id"]
     message_id = game["message_id"]
     bet = game["bet"]
+    
     if game["turn"] != "user":
         bot.answer_callback_query(call.id, "⏳ Сейчас ход бота!", True)
         return
+    
     if board[cell] != "":
         bot.answer_callback_query(call.id, "❌ Эта клетка уже занята!", True)
         return
+    
     board[cell] = "X"
     winner = check_winner(board)
+    
     if winner == "X":
         win_amount = bet * 2
-        add_coins_with_bonus(uid, win_amount, "ttt_win")
+        final_amount = add_coins_with_bonus(uid, win_amount, "ttt_win")
         bot.edit_message_text(game_over_message("X", board, bet), chat_id, message_id, parse_mode="Markdown")
         del ttt_games[uid]
-        bot.answer_callback_query(call.id, f"🎉 Ты выиграл с бонусом!", show_alert=True)
+        bot.answer_callback_query(call.id, f"🎉 Поздравляем! Ты выиграл {final_amount} монет (x2 от {bet} + бонус статуса)!", show_alert=True)
         return
     elif winner == "draw":
         add_coins(uid, bet)
@@ -350,8 +356,10 @@ def ttt_move(call):
         del ttt_games[uid]
         bot.answer_callback_query(call.id, f"🤝 Ничья! Возвращено {bet} монет", show_alert=True)
         return
+    
     game["turn"] = "bot"
     bot.answer_callback_query(call.id, "🤖 Бот думает...")
+    
     kb = create_ttt_keyboard(board)
     bot.edit_message_text(f"❌ **Крестики-нолики**\n\n💰 Ставка: {bet} монет\n💰 Выигрыш: {bet * 2} монет (x2)\nХод бота (⭕):\n\n{format_board_for_message(board)}", chat_id, message_id, parse_mode="Markdown", reply_markup=kb)
     
@@ -364,10 +372,12 @@ def ttt_move(call):
         if winner == "O":
             bot.edit_message_text(game_over_message("O", board, bet), chat_id, message_id, parse_mode="Markdown")
             del ttt_games[uid]
+            bot.answer_callback_query(call.id, f"😔 Бот выиграл! Ты проиграл {bet} монет", show_alert=True)
         elif winner == "draw":
             add_coins(uid, bet)
             bot.edit_message_text(game_over_message("draw", board, bet), chat_id, message_id, parse_mode="Markdown")
             del ttt_games[uid]
+            bot.answer_callback_query(call.id, f"🤝 Ничья! Возвращено {bet} монет", show_alert=True)
         else:
             game["turn"] = "user"
             kb = create_ttt_keyboard(board)
@@ -731,7 +741,7 @@ def admin_back_to_panel(call):
     bot.answer_callback_query(call.id)
     admin(call.message)
 
-# =============== ПОКАЗ ЛОГОВ ДЕЙСТВИЙ (СО СТАТУСАМИ) ===============
+# =============== ПОКАЗ ЛОГОВ ДЕЙСТВИЙ ===============
 @bot.callback_query_handler(func=lambda call: call.data == "admin_stats_log")
 def show_user_stats(call):
     if not is_admin(call.from_user.id):
