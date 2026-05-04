@@ -154,7 +154,6 @@ def get_total_earned(uid):
     return 0
 
 def get_status_and_bonus(uid):
-    """Возвращает статус и бонус пользователя"""
     if uid in user_stats and user_stats[uid].get("status"):
         manual_status = user_stats[uid]["status"]
         for status, data in STATUS_INFO.items():
@@ -176,7 +175,6 @@ def add_coins(uid, amt):
     save_coins()
 
 def add_coins_with_bonus(uid, amount, source):
-    """Добавляет монеты с учётом бонуса статуса"""
     status, bonus = get_status_and_bonus(uid)
     bonus_amount = int(amount * bonus)
     add_coins(uid, bonus_amount)
@@ -211,7 +209,7 @@ def test_command(m):
     track_user(m)
     bot.send_message(m.chat.id, "✅ Бот работает! Команды: /start, /buy, /admin")
 
-# =============== КРЕСТИКИ-НОЛИКИ (50/50) ===============
+# =============== КРЕСТИКИ-НОЛИКИ ===============
 def create_ttt_keyboard(board):
     kb = types.InlineKeyboardMarkup(row_width=3)
     buttons = []
@@ -235,7 +233,6 @@ def check_winner(board):
     return None
 
 def bot_move(board):
-    """Бот — 50% умный, 50% случайный"""
     if random.choice([True, False]):
         for i in range(9):
             if board[i] == "":
@@ -321,28 +318,22 @@ def start_ttt_game(call):
 def ttt_move(call):
     uid = call.from_user.id
     cell = int(call.data.split('_')[1])
-    
     if uid not in ttt_games:
         bot.answer_callback_query(call.id, "❌ Игра не найдена!", True)
         return
-    
     game = ttt_games[uid]
     board = game["board"]
     chat_id = game["chat_id"]
     message_id = game["message_id"]
     bet = game["bet"]
-    
     if game["turn"] != "user":
         bot.answer_callback_query(call.id, "⏳ Сейчас ход бота!", True)
         return
-    
     if board[cell] != "":
         bot.answer_callback_query(call.id, "❌ Эта клетка уже занята!", True)
         return
-    
     board[cell] = "X"
     winner = check_winner(board)
-    
     if winner == "X":
         win_amount = bet * 2
         final_amount = add_coins_with_bonus(uid, win_amount, "ttt_win")
@@ -356,10 +347,8 @@ def ttt_move(call):
         del ttt_games[uid]
         bot.answer_callback_query(call.id, f"🤝 Ничья! Возвращено {bet} монет", show_alert=True)
         return
-    
     game["turn"] = "bot"
     bot.answer_callback_query(call.id, "🤖 Бот думает...")
-    
     kb = create_ttt_keyboard(board)
     bot.edit_message_text(f"❌ **Крестики-нолики**\n\n💰 Ставка: {bet} монет\n💰 Выигрыш: {bet * 2} монет (x2)\nХод бота (⭕):\n\n{format_board_for_message(board)}", chat_id, message_id, parse_mode="Markdown", reply_markup=kb)
     
@@ -552,8 +541,12 @@ def cancel(m):
 @bot.callback_query_handler(func=lambda call: call.data == "stats")
 def stats_callback(call):
     uid = call.from_user.id
+    
+    # Сразу убираем часики на кнопке
+    bot.answer_callback_query(call.id)
+    
     if is_banned(uid):
-        bot.answer_callback_query(call.id, "❌ Вы забанены!", True)
+        bot.send_message(uid, "❌ Вы забанены!")
         return
     
     coins = get_coins(uid)
@@ -581,7 +574,6 @@ def stats_callback(call):
     text += f"❌⭕ **Выигрыш в Крестиках:** {ttt_win} монет\n"
     text += f"👑 **Получено от админа:** {admin_give} монет\n"
     
-    bot.answer_callback_query(call.id)
     bot.send_message(uid, text, parse_mode="Markdown")
 
 # =============== МАГАЗИН СТАТУСОВ ===============
