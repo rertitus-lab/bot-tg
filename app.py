@@ -648,7 +648,7 @@ def stats_callback(call):
         text += f"\n🏷 Звание: {title}"
     bot.send_message(uid, apply_customization(uid, text), parse_mode="Markdown")
 
-# =============== МАГАЗИН ===============
+# =============== МАГАЗИН CRACK MARKET ===============
 @bot.callback_query_handler(func=lambda call: call.data == "market")
 def market_menu(call):
     uid = call.from_user.id
@@ -745,8 +745,11 @@ def market_crackplus(call):
     price = 60000
     final = int(price*(1-disc))
     kb = types.InlineKeyboardMarkup()
-    kb.add(types.InlineKeyboardButton(f"✅ Купить за {final}", callback_data="buy_crack_plus"), types.InlineKeyboardButton("🔙 Назад", callback_data="market"))
-    text = f"📦 **Crack Plus**\n💰 Цена: {final}"
+    kb.add(
+        types.InlineKeyboardButton(f"✅ Купить за {final} монет", callback_data="buy_crack_plus"),
+        types.InlineKeyboardButton("🔙 Назад", callback_data="market")
+    )
+    text = f"📦 **Crack Plus**\n💲 Цена: {final}"
     if disc:
         text += f" (было {price})"
     text += f"\n\n✨ В комплекте:\n• Ссылка на софт\n• Уникальный ключ\n\n⚠️ Навсегда!\n💰 Твой баланс: {coins}"
