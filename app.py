@@ -537,45 +537,6 @@ def cancel(m):
         del waiting_for_report[uid]
         bot.reply_to(m, "❌ Отменено")
 
-# =============== СТАТИСТИКА ПОЛЬЗОВАТЕЛЯ ===============
-@bot.callback_query_handler(func=lambda call: call.data == "stats")
-def stats_callback(call):
-    uid = call.from_user.id
-    
-    # Сразу убираем часики на кнопке
-    bot.answer_callback_query(call.id)
-    
-    if is_banned(uid):
-        bot.send_message(uid, "❌ Вы забанены!")
-        return
-    
-    coins = get_coins(uid)
-    status, bonus = get_status_and_bonus(uid)
-    bonus_percent = int((bonus - 1) * 100)
-    
-    stats = user_stats.get(uid, {})
-    fortune_win = stats.get("fortune_win", 0)
-    ttt_win = stats.get("ttt_win", 0)
-    admin_give = stats.get("admin_give", 0)
-    total_earned = stats.get("total_earned", 0)
-    
-    text = f"📊 **Твоя статистика**\n\n"
-    text += f"👤 **Имя:** {call.from_user.first_name}\n"
-    if call.from_user.username:
-        text += f"📱 **Username:** @{call.from_user.username}\n"
-    text += f"🆔 **ID:** `{uid}`\n\n"
-    
-    text += f"💰 **Баланс:** {coins} монет\n"
-    text += f"🏆 **Статус:** {status}\n"
-    text += f"✨ **Бонус к заработку:** +{bonus_percent}%\n"
-    text += f"📈 **Всего заработано:** {total_earned} монет\n\n"
-    
-    text += f"🎰 **Выигрыш в Фортуне:** {fortune_win} монет\n"
-    text += f"❌⭕ **Выигрыш в Крестиках:** {ttt_win} монет\n"
-    text += f"👑 **Получено от админа:** {admin_give} монет\n"
-    
-    bot.send_message(uid, text, parse_mode="Markdown")
-
 # =============== МАГАЗИН СТАТУСОВ ===============
 @bot.callback_query_handler(func=lambda call: call.data == "buy_status")
 def buy_status_menu(call):
@@ -826,13 +787,16 @@ def process_take_coins(message):
     except:
         bot.send_message(message.chat.id, "❌ Ошибка! Пример: 123456789 500")
 
-# =============== ОБЫЧНЫЕ КНОПКИ ===============
+# =============== ОБРАБОТЧИК КНОПОК (ОСНОВНОЙ) ===============
 @bot.callback_query_handler(func=lambda call: True)
 def callback(call):
     uid = call.from_user.id
+    
     if is_banned(uid):
         bot.answer_callback_query(call.id, "❌ Вы забанены!", True)
         return
+    
+    # Обработка ответа на жалобу
     if call.data.startswith('reply_'):
         if not is_admin(uid):
             bot.answer_callback_query(call.id, "❌ Нет доступа!", True)
@@ -842,12 +806,101 @@ def callback(call):
         msg = bot.send_message(call.message.chat.id, f"Введите ответ для {user_id}:")
         bot.register_next_step_handler(msg, lambda m: send_reply(m, user_id))
         return
-    if call.data not in ["stats", "buy_status", "crack_plus", "fortune_wheel", "fortune_10", "fortune_50", "fortune_100", "fortune_300", "fortune_5000", "fortune_10000", "tic_tac_toe", "ttt_bet_50", "ttt_bet_100", "ttt_bet_300", "ttt_bet_1000", "ttt_bet_2000", "ttt_bet_10000", "admin_give_coins", "admin_take_coins", "admin_stats_log", "admin_give_status"]:
-        cd = check_cd(uid)
-        if cd > 0:
-            bot.answer_callback_query(call.id, f"⏳ {cd} сек!", True)
-            return
-        update_cd(uid)
+    
+    # СТАТИСТИКА
+    if call.data == "stats":
+        coins = get_coins(uid)
+        status, bonus = get_status_and_bonus(uid)
+        bonus_percent = int((bonus - 1) * 100)
+        stats = user_stats.get(uid, {})
+        fortune_win = stats.get("fortune_win", 0)
+        ttt_win = stats.get("ttt_win", 0)
+        admin_give = stats.get("admin_give", 0)
+        total_earned = stats.get("total_earned", 0)
+        
+        text = f"📊 **Твоя статистика**\n\n"
+        text += f"👤 **Имя:** {call.from_user.first_name}\n"
+        if call.from_user.username:
+            text += f"📱 **Username:** @{call.from_user.username}\n"
+        text += f"🆔 **ID:** `{uid}`\n\n"
+        text += f"💰 **Баланс:** {coins} монет\n"
+        text += f"🏆 **Статус:** {status}\n"
+        text += f"✨ **Бонус к заработку:** +{bonus_percent}%\n"
+        text += f"📈 **Всего заработано:** {total_earned} монет\n\n"
+        text += f"🎰 **Выигрыш в Фортуне:** {fortune_win} монет\n"
+        text += f"❌⭕ **Выигрыш в Крестиках:** {ttt_win} монет\n"
+        text += f"👑 **Получено от админа:** {admin_give} монет\n"
+        
+        bot.answer_callback_query(call.id)
+        bot.send_message(uid, text, parse_mode="Markdown")
+        return
+    
+    # Колесо фортуны
+    if call.data == "fortune_wheel":
+        fortune_wheel_menu(call)
+        return
+    
+    if call.data.startswith("fortune_"):
+        fortune_spin(call)
+        return
+    
+    # Крестики-нолики
+    if call.data == "tic_tac_toe":
+        tic_tac_toe_menu(call)
+        return
+    
+    if call.data.startswith("ttt_bet_"):
+        start_ttt_game(call)
+        return
+    
+    if call.data.startswith("ttt_") and not call.data.startswith("ttt_bet_"):
+        ttt_move(call)
+        return
+    
+    # Магазин статусов
+    if call.data == "buy_status":
+        buy_status_menu(call)
+        return
+    
+    if call.data.startswith("buy_status_"):
+        show_status_info(call)
+        return
+    
+    if call.data.startswith("confirm_buy_"):
+        confirm_buy_status(call)
+        return
+    
+    # Админ-выдача статуса
+    if call.data == "admin_give_status":
+        give_status_menu(call)
+        return
+    
+    if call.data.startswith("admin_status_"):
+        ask_user_id_for_status(call)
+        return
+    
+    if call.data == "admin_back_to_panel":
+        admin_back_to_panel(call)
+        return
+    
+    # Логи действий
+    if call.data == "admin_stats_log":
+        show_user_stats(call)
+        return
+    
+    # Назад
+    if call.data == "back_to_menu":
+        back_to_menu(call)
+        return
+    
+    # КД для остальных кнопок
+    cd = check_cd(uid)
+    if cd > 0:
+        bot.answer_callback_query(call.id, f"⏳ {cd} сек!", True)
+        return
+    update_cd(uid)
+    
+    # Обычные кнопки
     if call.data == "download":
         global download_count
         download_count += 1
@@ -864,7 +917,10 @@ def callback(call):
         waiting_for_report[uid] = True
         bot.answer_callback_query(call.id)
         bot.send_message(uid, "✍️ Напишите текст жалобы (/cancel для отмены)")
-    elif is_admin(uid) and call.data.startswith('admin_') and call.data not in ["admin_give_coins", "admin_take_coins", "admin_stats_log", "admin_give_status"]:
+    elif call.data == "crack_plus":
+        bot.answer_callback_query(call.id)
+        bot.send_message(uid, "🌐 **Crack Plus**\n\n💲 цена 60000 монет\n\nНапишите /buy чтобы купить!", parse_mode="Markdown")
+    elif is_admin(uid) and call.data.startswith('admin_'):
         if call.data == "admin_stats":
             bot.answer_callback_query(call.id)
             bot.send_message(uid, f"📊 Статистика:\n📥 Скачиваний: {download_count}\n👥 Пользователей: {len(users)}")
