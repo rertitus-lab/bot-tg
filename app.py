@@ -29,41 +29,11 @@ STATUS_INFO = {
 
 # Кейсы
 CASES = {
-    "bronze": {
-        "name": "🥉 Бронзовый кейс",
-        "price": 2000,
-        "min": 1000,
-        "max": 7500,
-        "emoji": "🥉"
-    },
-    "silver": {
-        "name": "🥈 Серебряный кейс",
-        "price": 3500,
-        "min": 1500,
-        "max": 10000,
-        "emoji": "🥈"
-    },
-    "diamond": {
-        "name": "💎 Алмазный кейс",
-        "price": 5000,
-        "min": 2500,
-        "max": 10000,
-        "emoji": "💎"
-    },
-    "amethyst": {
-        "name": "🟣 Аметистовый кейс",
-        "price": 40000,
-        "min": 20000,
-        "max": 80000,
-        "emoji": "🟣"
-    },
-    "god": {
-        "name": "👑 Кейс бога",
-        "price": 100000,
-        "min": 50000,
-        "max": 200000,
-        "emoji": "👑"
-    }
+    "bronze": {"name": "🥉 Бронзовый кейс", "price": 2000, "min": 1000, "max": 7500},
+    "silver": {"name": "🥈 Серебряный кейс", "price": 3500, "min": 1500, "max": 10000},
+    "diamond": {"name": "💎 Алмазный кейс", "price": 5000, "min": 2500, "max": 10000},
+    "amethyst": {"name": "🟣 Аметистовый кейс", "price": 40000, "min": 20000, "max": 80000},
+    "god": {"name": "👑 Кейс бога", "price": 100000, "min": 50000, "max": 200000}
 }
 
 # Настройки Герцога
@@ -107,7 +77,7 @@ def load_blacklist():
     if os.path.exists(BLACKLIST_FILE):
         with open(BLACKLIST_FILE, 'r') as f:
             blacklist = set(int(line.strip()) for line in f if line.strip())
-    print(f"✅ Загружен ЧС: {len(blacklist)} пользователей")
+    print(f"✅ Загружен ЧС: {len(blacklist)}")
 
 def save_blacklist():
     with open(BLACKLIST_FILE, 'w') as f:
@@ -122,7 +92,7 @@ def load_messages():
                 if '|' in line:
                     uid, count, username, name = line.strip().split('|')
                     message_tracker[int(uid)] = {"count": int(count), "username": username, "name": name}
-    print(f"✅ Загружен трекер: {len(message_tracker)} пользователей")
+    print(f"✅ Загружен трекер: {len(message_tracker)}")
 
 def save_messages():
     with open(MESSAGE_FILE, 'w') as f:
@@ -144,7 +114,7 @@ def load_coins():
                 if '|' in line:
                     uid, val = line.strip().split('|')
                     coins_data[int(uid)] = int(val)
-    print(f"✅ Загружены монеты: {len(coins_data)} пользователей")
+    print(f"✅ Загружены монеты: {len(coins_data)}")
 
 def save_coins():
     with open(COINS_FILE, 'w') as f:
@@ -171,7 +141,7 @@ def load_stats():
                             "status": parts[10] if len(parts) > 10 else "",
                             "title": parts[11] if len(parts) > 11 else ""
                         }
-    print(f"✅ Загружена статистика: {len(user_stats)} пользователей")
+    print(f"✅ Загружена статистика: {len(user_stats)}")
 
 def save_stats():
     with open(STATS_FILE, 'w') as f:
@@ -198,24 +168,22 @@ def update_total_earned(uid, amount):
     save_stats()
 
 def get_total_earned(uid):
-    if uid in user_stats:
-        return user_stats[uid].get("total_earned", 0)
-    return 0
+    return user_stats.get(uid, {}).get("total_earned", 0)
 
 def get_status_and_bonus(uid):
     if uid in user_stats and user_stats[uid].get("status"):
-        manual_status = user_stats[uid]["status"]
+        manual = user_stats[uid]["status"]
         for status, data in STATUS_INFO.items():
-            if status == manual_status:
-                return manual_status, data["bonus"]
-        return manual_status, 1.0
+            if status == manual:
+                return manual, data["bonus"]
+        return manual, 1.0
     total = get_total_earned(uid)
     for status, data in STATUS_INFO.items():
         if data["price"] <= total:
             return status, data["bonus"]
     return "🟢 Новичок", 1.0
 
-# =============== ФУНКЦИИ ДЛЯ БУСТОВ И ПЕРМАНЕНТОВ ===============
+# =============== ФУНКЦИИ ДЛЯ БУСТОВ ===============
 def load_boosts():
     global user_boosts
     if os.path.exists(BOOSTS_FILE):
@@ -223,7 +191,7 @@ def load_boosts():
             user_boosts = json.load(f)
     else:
         user_boosts = {}
-    print(f"✅ Загружены бусты: {len(user_boosts)} пользователей")
+    print(f"✅ Загружены бусты: {len(user_boosts)}")
 
 def save_boosts():
     with open(BOOSTS_FILE, 'w') as f:
@@ -236,19 +204,18 @@ def load_permanent():
             user_permanent = json.load(f)
     else:
         user_permanent = {}
-    print(f"✅ Загружены перманенты: {len(user_permanent)} пользователей")
+    print(f"✅ Загружены перманенты: {len(user_permanent)}")
 
 def save_permanent():
     with open(PERMANENT_FILE, 'w') as f:
         json.dump(user_permanent, f)
 
-# =============== ФУНКЦИИ ДЛЯ ГЕРЦОГА ===============
 def load_duke_settings():
     global duke_settings
     if os.path.exists(DUKE_SETTINGS_FILE):
         with open(DUKE_SETTINGS_FILE, 'r') as f:
             duke_settings = json.load(f)
-    print(f"✅ Загружены настройки Герцога: {len(duke_settings)} пользователей")
+    print(f"✅ Загружены настройки Герцога: {len(duke_settings)}")
 
 def save_duke_settings():
     with open(DUKE_SETTINGS_FILE, 'w') as f:
@@ -261,11 +228,11 @@ def apply_customization(uid, text):
     if not color or color == "none":
         return text
     if color == "rainbow":
-        rainbow_emojis = ["🔴", "🟠", "🟡", "🟢", "🔵", "🟣"]
+        emojis = ["🔴","🟠","🟡","🟢","🔵","🟣"]
         lines = text.split('\n')
         result = []
         for i, line in enumerate(lines):
-            result.append(f"{rainbow_emojis[i % len(rainbow_emojis)]} {line}")
+            result.append(f"{emojis[i % len(emojis)]} {line}")
         return '\n'.join(result)
     elif color == "red":
         return f"🔴 {text}"
@@ -277,10 +244,9 @@ def apply_customization(uid, text):
         return f"🟣 {text}"
     elif color == "white":
         return f"⚪ {text}"
-    else:
-        return text
+    return text
 
-# =============== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ===============
+# =============== ВСПОМОГАТЕЛЬНЫЕ ===============
 def is_banned(uid): return uid in blacklist
 def is_admin(uid): return uid == ADMIN_ID
 def get_coins(uid): return coins_data.get(uid, 0)
@@ -351,7 +317,7 @@ def more_callback(call):
         return
     update_cd(uid)
     bot.answer_callback_query(call.id, "📸")
-    bot.send_photo(uid, IMAGE_URL, caption="☢️ антивирус может ругаться на софт")
+    bot.send_photo(uid, IMAGE_URL, caption="☢️ антивирус может ругаться")
 
 @bot.callback_query_handler(func=lambda call: call.data == "share")
 def share_callback(call):
@@ -380,16 +346,14 @@ def report_callback(call):
 # =============== КРЕСТИКИ-НОЛИКИ ===============
 def create_ttt_keyboard(board):
     kb = types.InlineKeyboardMarkup(row_width=3)
-    buttons = []
     for i in range(9):
         emoji = "❌" if board[i] == "X" else "⭕" if board[i] == "O" else "⬜"
-        buttons.append(types.InlineKeyboardButton(emoji, callback_data=f"ttt_{i}"))
-    kb.add(*buttons)
+        kb.add(types.InlineKeyboardButton(emoji, callback_data=f"ttt_{i}"))
     return kb
 
 def check_winner(board):
-    win_patterns = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]]
-    for p in win_patterns:
+    patterns = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]]
+    for p in patterns:
         if board[p[0]] == board[p[1]] == board[p[2]] != "":
             return board[p[0]]
     if "" not in board:
@@ -398,17 +362,14 @@ def check_winner(board):
 
 def bot_move_duke(board, uid):
     status, _ = get_status_and_bonus(uid)
-    if status == "👑 Герцог":
-        if random.random() < 0.3:
-            free = [i for i in range(9) if board[i] == ""]
-            if free:
-                return random.choice(free)
+    if status == "👑 Герцог" and random.random() < 0.3:
+        free = [i for i in range(9) if board[i] == ""]
+        if free:
+            return random.choice(free)
     free = [i for i in range(9) if board[i] == ""]
-    if free:
-        return random.choice(free)
-    return None
+    return random.choice(free) if free else None
 
-def format_board_for_message(board):
+def format_board(board):
     symbols = {"X":"❌","O":"⭕","":"⬜"}
     rows = []
     for i in range(0,9,3):
@@ -416,13 +377,13 @@ def format_board_for_message(board):
     return "```\n" + "\n".join(rows) + "\n```"
 
 def game_over_message(winner, board, bet):
-    win_amount = bet * 2
+    win = bet * 2
     if winner == "X":
-        return f"🎉 **ПОБЕДА!** 🎉\n\nТы выиграл {win_amount} монет (x2 от {bet})!\n\n" + format_board_for_message(board)
+        return f"🎉 **ПОБЕДА!** 🎉\n\nТы выиграл {win} монет (x2 от {bet})!\n\n{format_board(board)}"
     elif winner == "O":
-        return f"😔 **ПРОИГРЫШ!** 😔\n\nТы проиграл {bet} монет.\n\n" + format_board_for_message(board)
+        return f"😔 **ПРОИГРЫШ!** 😔\n\nТы проиграл {bet} монет.\n\n{format_board(board)}"
     else:
-        return f"🤝 **НИЧЬЯ!** 🤝\n\nСтавка возвращена — {bet} монет.\n\n" + format_board_for_message(board)
+        return f"🤝 **НИЧЬЯ!** 🤝\n\nСтавка возвращена — {bet} монет.\n\n{format_board(board)}"
 
 @bot.callback_query_handler(func=lambda call: call.data == "tic_tac_toe")
 def tic_tac_toe_menu(call):
@@ -450,17 +411,16 @@ def start_ttt_game(call):
     if is_banned(uid):
         bot.answer_callback_query(call.id, "❌ Вы забанены!", True)
         return
-    coins = get_coins(uid)
-    if coins < bet:
-        bot.answer_callback_query(call.id, f"❌ Не хватает монет! Нужно {bet}, у тебя {coins}", True)
+    if get_coins(uid) < bet:
+        bot.answer_callback_query(call.id, f"❌ Нужно {bet} монет!", True)
         return
     bot.answer_callback_query(call.id)
-    board = [""]*9
     remove_coins(uid, bet)
-    ttt_games[uid] = {"board":board, "turn":"user", "bet":bet, "message_id":None, "chat_id":call.message.chat.id}
+    board = [""]*9
+    ttt_games[uid] = {"board": board, "turn": "user", "bet": bet, "msg_id": None, "chat_id": call.message.chat.id}
     kb = create_ttt_keyboard(board)
-    msg = bot.send_message(uid, f"❌ **Крестики-нолики**\n\n💰 Ставка: {bet} монет\n💰 Выигрыш: {bet*2} монет (x2)\nТвой ход (❌):\n\n{format_board_for_message(board)}", parse_mode="Markdown", reply_markup=kb)
-    ttt_games[uid]["message_id"] = msg.message_id
+    msg = bot.send_message(uid, f"❌ **Крестики-нолики**\n\n💰 Ставка: {bet}\n💰 Выигрыш: {bet*2} (x2)\nТвой ход:\n\n{format_board(board)}", parse_mode="Markdown", reply_markup=kb)
+    ttt_games[uid]["msg_id"] = msg.message_id
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith("ttt_") and not call.data.startswith("ttt_bet_"))
 def ttt_move(call):
@@ -471,55 +431,52 @@ def ttt_move(call):
         return
     game = ttt_games[uid]
     board = game["board"]
-    chat_id = game["chat_id"]
-    message_id = game["message_id"]
-    bet = game["bet"]
     if game["turn"] != "user":
         bot.answer_callback_query(call.id, "⏳ Сейчас ход бота!", True)
         return
     if board[cell] != "":
-        bot.answer_callback_query(call.id, "❌ Эта клетка уже занята!", True)
+        bot.answer_callback_query(call.id, "❌ Занято!", True)
         return
     board[cell] = "X"
     winner = check_winner(board)
     if winner == "X":
-        win_amount = bet*2
-        final_amount = add_coins_with_bonus(uid, win_amount, "ttt_win")
-        bot.edit_message_text(game_over_message("X", board, bet), chat_id, message_id, parse_mode="Markdown")
+        win_amount = game["bet"] * 2
+        final = add_coins_with_bonus(uid, win_amount, "ttt_win")
+        bot.edit_message_text(game_over_message("X", board, game["bet"]), game["chat_id"], game["msg_id"], parse_mode="Markdown")
         del ttt_games[uid]
-        bot.answer_callback_query(call.id, f"🎉 Поздравляем! Ты выиграл {final_amount} монет (x2 от {bet} + бонус статуса)!", show_alert=True)
+        bot.answer_callback_query(call.id, f"🎉 Ты выиграл {final} монет!", show_alert=True)
         return
     elif winner == "draw":
-        add_coins(uid, bet)
-        bot.edit_message_text(game_over_message("draw", board, bet), chat_id, message_id, parse_mode="Markdown")
+        add_coins(uid, game["bet"])
+        bot.edit_message_text(game_over_message("draw", board, game["bet"]), game["chat_id"], game["msg_id"], parse_mode="Markdown")
         del ttt_games[uid]
-        bot.answer_callback_query(call.id, f"🤝 Ничья! Возвращено {bet} монет", show_alert=True)
+        bot.answer_callback_query(call.id, f"🤝 Ничья! Возвращено {game['bet']} монет", show_alert=True)
         return
     game["turn"] = "bot"
     bot.answer_callback_query(call.id, "🤖 Бот думает...")
     kb = create_ttt_keyboard(board)
-    bot.edit_message_text(f"❌ **Крестики-нолики**\n\n💰 Ставка: {bet} монет\n💰 Выигрыш: {bet*2} монет (x2)\nХод бота (⭕):\n\n{format_board_for_message(board)}", chat_id, message_id, parse_mode="Markdown", reply_markup=kb)
+    bot.edit_message_text(f"❌ **Крестики-нолики**\n\n💰 Ставка: {game['bet']}\n💰 Выигрыш: {game['bet']*2} (x2)\nХод бота:\n\n{format_board(board)}", game["chat_id"], game["msg_id"], parse_mode="Markdown", reply_markup=kb)
     
-    def bot_move_async():
+    def bot_async():
         time.sleep(1)
         move = bot_move_duke(board, uid)
         if move is not None:
             board[move] = "O"
         winner = check_winner(board)
         if winner == "O":
-            bot.edit_message_text(game_over_message("O", board, bet), chat_id, message_id, parse_mode="Markdown")
+            bot.edit_message_text(game_over_message("O", board, game["bet"]), game["chat_id"], game["msg_id"], parse_mode="Markdown")
             del ttt_games[uid]
-            bot.answer_callback_query(call.id, f"😔 Бот выиграл! Ты проиграл {bet} монет", show_alert=True)
+            bot.answer_callback_query(call.id, f"😔 Ты проиграл {game['bet']} монет", show_alert=True)
         elif winner == "draw":
-            add_coins(uid, bet)
-            bot.edit_message_text(game_over_message("draw", board, bet), chat_id, message_id, parse_mode="Markdown")
+            add_coins(uid, game["bet"])
+            bot.edit_message_text(game_over_message("draw", board, game["bet"]), game["chat_id"], game["msg_id"], parse_mode="Markdown")
             del ttt_games[uid]
-            bot.answer_callback_query(call.id, f"🤝 Ничья! Возвращено {bet} монет", show_alert=True)
+            bot.answer_callback_query(call.id, f"🤝 Ничья! Возвращено {game['bet']} монет", show_alert=True)
         else:
             game["turn"] = "user"
             kb = create_ttt_keyboard(board)
-            bot.edit_message_text(f"❌ **Крестики-нолики**\n\n💰 Ставка: {bet} монет\n💰 Выигрыш: {bet*2} монет (x2)\nТвой ход (❌):\n\n{format_board_for_message(board)}", chat_id, message_id, parse_mode="Markdown", reply_markup=kb)
-    threading.Thread(target=bot_move_async).start()
+            bot.edit_message_text(f"❌ **Крестики-нолики**\n\n💰 Ставка: {game['bet']}\n💰 Выигрыш: {game['bet']*2} (x2)\nТвой ход:\n\n{format_board(board)}", game["chat_id"], game["msg_id"], parse_mode="Markdown", reply_markup=kb)
+    threading.Thread(target=bot_async).start()
 
 # =============== КОЛЕСО ФОРТУНЫ ===============
 @bot.callback_query_handler(func=lambda call: call.data == "fortune_wheel")
@@ -531,16 +488,16 @@ def fortune_wheel_menu(call):
     coins = get_coins(uid)
     kb = types.InlineKeyboardMarkup(row_width=2)
     kb.add(
-        types.InlineKeyboardButton("🎲 10 монет", callback_data="fortune_10"),
-        types.InlineKeyboardButton("🎲 50 монет", callback_data="fortune_50"),
-        types.InlineKeyboardButton("🎲 100 монет", callback_data="fortune_100"),
-        types.InlineKeyboardButton("🎲 300 монет", callback_data="fortune_300"),
-        types.InlineKeyboardButton("🎲 5000 монет", callback_data="fortune_5000"),
-        types.InlineKeyboardButton("🎲 10000 монет", callback_data="fortune_10000"),
+        types.InlineKeyboardButton("🎲 10", callback_data="fortune_10"),
+        types.InlineKeyboardButton("🎲 50", callback_data="fortune_50"),
+        types.InlineKeyboardButton("🎲 100", callback_data="fortune_100"),
+        types.InlineKeyboardButton("🎲 300", callback_data="fortune_300"),
+        types.InlineKeyboardButton("🎲 5000", callback_data="fortune_5000"),
+        types.InlineKeyboardButton("🎲 10000", callback_data="fortune_10000"),
         types.InlineKeyboardButton("🔙 Назад", callback_data="back_to_menu")
     )
     bot.answer_callback_query(call.id)
-    bot.send_message(uid, f"🎰 **Колесо фортуны**\n\n💰 Твой баланс: {coins} монет\n\nВыбери ставку (50% победа):", parse_mode="Markdown", reply_markup=kb)
+    bot.send_message(uid, f"🎰 Колесо фортуны\n💰 {coins} монет\nВыбери ставку (50% победа):", parse_mode="Markdown", reply_markup=kb)
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith("fortune_"))
 def fortune_spin(call):
@@ -549,16 +506,12 @@ def fortune_spin(call):
     if is_banned(uid):
         bot.answer_callback_query(call.id, "❌ Вы забанены!", True)
         return
-    coins = get_coins(uid)
-    if coins < bet:
-        bot.answer_callback_query(call.id, f"❌ Не хватает монет! Нужно {bet}, у тебя {coins}", True)
+    if get_coins(uid) < bet:
+        bot.answer_callback_query(call.id, f"❌ Нужно {bet}!", True)
         return
-    bot.answer_callback_query(call.id, "🎰 Колесо крутится...", show_alert=False)
+    bot.answer_callback_query(call.id, "🎰 Крутится...")
     status, _ = get_status_and_bonus(uid)
-    if status == "👑 Герцог":
-        is_win = random.random() < 0.7
-    else:
-        is_win = random.choice([True, False])
+    is_win = random.random() < 0.7 if status == "👑 Герцог" else random.choice([True, False])
     if is_win:
         if bet == 10: prizes = [10,20,50,100]
         elif bet == 50: prizes = [50,100,150,250]
@@ -571,17 +524,14 @@ def fortune_spin(call):
             win = int(win * 1.5)
         remove_coins(uid, bet)
         add_coins_with_bonus(uid, win, "fortune_win")
-        final_coins = get_coins(uid)
-        text = f"🎉 **ПОБЕДА!** 🎉\n\n💰 Ставка: {bet} монет\n🏆 Выигрыш: {win} монет\n💵 Чистый выигрыш: +{win-bet} монет\n💰 Новый баланс: {final_coins} монет"
+        text = f"🎉 **ПОБЕДА!**\n💰 Ставка: {bet}\n🏆 Выигрыш: {win}\n💵 +{win-bet}\n💰 Новый баланс: {get_coins(uid)}"
         bot.send_message(uid, text, parse_mode="Markdown")
     else:
         remove_coins(uid, bet)
-        final_coins = get_coins(uid)
-        text = f"😔 **ПРОИГРЫШ!** 😔\n\n💰 Ставка: {bet} монет\n💵 Потеряно: -{bet} монет\n💰 Новый баланс: {final_coins} монет"
+        text = f"😔 **ПРОИГРЫШ!**\n💰 Потеряно: {bet}\n💰 Новый баланс: {get_coins(uid)}"
         bot.send_message(uid, text, parse_mode="Markdown")
     kb = types.InlineKeyboardMarkup()
-    kb.add(types.InlineKeyboardButton("🎰 Сыграть ещё", callback_data="fortune_wheel"))
-    kb.add(types.InlineKeyboardButton("🔙 Главное меню", callback_data="back_to_menu"))
+    kb.add(types.InlineKeyboardButton("🎰 Ещё", callback_data="fortune_wheel"), types.InlineKeyboardButton("🔙 Назад", callback_data="back_to_menu"))
     bot.send_message(uid, "Хочешь сыграть ещё?", reply_markup=kb)
 
 # =============== КНОПКА НАЗАД ===============
@@ -615,7 +565,7 @@ def start(m):
         return
     users.add(uid)
     add_coins_with_bonus(uid, 10, "start")
-    bot.send_message(uid, f"💰 +10 монет с учётом бонуса статуса! Баланс: {get_coins(uid)}")
+    bot.send_message(uid, f"💰 +10 монет! Баланс: {get_coins(uid)}")
     kb = types.InlineKeyboardMarkup(row_width=1)
     kb.add(
         types.InlineKeyboardButton("📥 Crack Free", callback_data="download"),
@@ -665,23 +615,23 @@ def cancel(m):
         bot.reply_to(m, "❌ Отменено")
 
 @bot.message_handler(commands=['salary'])
-def salary_command(m):
+def salary(m):
     uid = m.from_user.id
     status, _ = get_status_and_bonus(uid)
     if status != "👑 Герцог":
-        bot.send_message(uid, "❌ Эта команда доступна только для статуса 👑 Герцог!")
+        bot.send_message(uid, "❌ Только для 👑 Герцог!")
         return
     if uid not in duke_settings:
         duke_settings[uid] = {}
-    if duke_settings[uid].get("salary_taken") == time.strftime("%Y-%m-%d"):
-        bot.send_message(uid, "❌ Ты уже получал зарплату сегодня! Забирай завтра.")
+    if duke_settings[uid].get("salary") == time.strftime("%Y-%m-%d"):
+        bot.send_message(uid, "❌ Сегодня уже получал!")
         return
     add_coins(uid, 100000)
-    duke_settings[uid]["salary_taken"] = time.strftime("%Y-%m-%d")
+    duke_settings[uid]["salary"] = time.strftime("%Y-%m-%d")
     save_duke_settings()
-    bot.send_message(uid, f"💰 Ты получил зарплату 100000 монет!\n💰 Новый баланс: {get_coins(uid)} монет")
+    bot.send_message(uid, f"💰 Зарплата 100000 монет!\n💰 Баланс: {get_coins(uid)}")
 
-# =============== СТАТИСТИКА ПОЛЬЗОВАТЕЛЯ ===============
+# =============== СТАТИСТИКА ===============
 @bot.callback_query_handler(func=lambda call: call.data == "stats")
 def stats_callback(call):
     uid = call.from_user.id
@@ -691,16 +641,14 @@ def stats_callback(call):
         return
     coins = get_coins(uid)
     status, bonus = get_status_and_bonus(uid)
-    bonus_percent = int((bonus-1)*100)
     stats = user_stats.get(uid, {})
-    title = stats.get("title","")
-    text = f"📊 **Твоя статистика**\n\n👤 {call.from_user.first_name}\n📱 @{call.from_user.username}\n🆔 `{uid}`\n\n💰 {coins} монет\n🏆 {status}\n✨ +{bonus_percent}%\n📈 {stats.get('total_earned',0)} всего\n🎰 Фортуна: {stats.get('fortune_win',0)}\n❌⭕ Крестики: {stats.get('ttt_win',0)}"
+    title = stats.get("title", "")
+    text = f"📊 **Твоя статистика**\n\n👤 {call.from_user.first_name}\n🆔 {uid}\n💰 {coins} монет\n🏆 {status}\n✨ +{int((bonus-1)*100)}%\n📈 Всего заработано: {stats.get('total_earned',0)}\n🎰 Фортуна: {stats.get('fortune_win',0)}\n❌⭕ Крестики: {stats.get('ttt_win',0)}"
     if title:
         text += f"\n🏷 Звание: {title}"
-    text = apply_customization(uid, text)
-    bot.send_message(uid, text, parse_mode="Markdown")
+    bot.send_message(uid, apply_customization(uid, text), parse_mode="Markdown")
 
-# =============== МАГАЗИН CRACK MARKET ===============
+# =============== МАГАЗИН ===============
 @bot.callback_query_handler(func=lambda call: call.data == "market")
 def market_menu(call):
     uid = call.from_user.id
@@ -710,39 +658,36 @@ def market_menu(call):
     coins = get_coins(uid)
     kb = types.InlineKeyboardMarkup(row_width=1)
     kb.add(
-        types.InlineKeyboardButton("🏆 Статусы", callback_data="market_privileges"),
+        types.InlineKeyboardButton("🏆 Статусы", callback_data="market_statuses"),
         types.InlineKeyboardButton("📦 Crack Plus", callback_data="market_crackplus"),
         types.InlineKeyboardButton("🎲 Кейсы", callback_data="market_cases"),
         types.InlineKeyboardButton("🔙 Назад", callback_data="back_to_menu")
     )
     bot.answer_callback_query(call.id)
-    bot.send_message(uid, f"🛍 **Crack Market**\n\n💰 Твой баланс: {coins} монет\n\nВыбери категорию:", parse_mode="Markdown", reply_markup=kb)
+    bot.send_message(uid, f"🛍 **Crack Market**\n💰 Баланс: {coins}\nВыбери категорию:", parse_mode="Markdown", reply_markup=kb)
 
-# =============== СТАТУСЫ В МАГАЗИНЕ ===============
-@bot.callback_query_handler(func=lambda call: call.data == "market_privileges")
-def market_privileges(call):
+@bot.callback_query_handler(func=lambda call: call.data == "market_statuses")
+def market_statuses(call):
     uid = call.from_user.id
     if is_banned(uid):
         bot.answer_callback_query(call.id, "❌ Вы забанены!", True)
         return
     coins = get_coins(uid)
-    current_status, bonus = get_status_and_bonus(uid)
-    status, _ = get_status_and_bonus(uid)
-    discount = 0.25 if status == "👑 Герцог" else 0
+    status, bonus = get_status_and_bonus(uid)
+    disc = 0.25 if status == "👑 Герцог" else 0
     kb = types.InlineKeyboardMarkup(row_width=1)
-    text = f"🏆 **Статусы**\n\n💰 {coins} монет\n📊 Твой статус: {current_status}\n✨ Бонус: +{int((bonus-1)*100)}%\n"
-    if discount > 0:
-        text += f"🎉 Скидка {int(discount*100)}%\n\n"
-    for status_name, info in STATUS_INFO.items():
-        if status_name != "🟢 Новичок":
+    text = f"🏆 **Статусы**\n💰 {coins} монет\n📊 Твой статус: {status}\n✨ +{int((bonus-1)*100)}%\n"
+    if disc > 0:
+        text += f"🎉 Скидка {int(disc*100)}%\n\n"
+    for s, info in STATUS_INFO.items():
+        if s != "🟢 Новичок":
             price = info["price"]
-            final_price = int(price*(1-discount))
-            kb.add(types.InlineKeyboardButton(f"{status_name} — {final_price}", callback_data=f"buy_status_{status_name}"))
-            text += f"\n• {status_name}: {final_price}"
-            if discount > 0:
+            final = int(price*(1-disc))
+            kb.add(types.InlineKeyboardButton(f"{s} — {final}", callback_data=f"buy_status_{s}"))
+            text += f"\n• {s}: {final}"
+            if disc:
                 text += f" (было {price})"
-            if info.get("bonus"):
-                text += f" (+{int((info['bonus']-1)*100)}% к заработку)"
+            text += f" (+{int((info['bonus']-1)*100)}% к заработку)"
             if info.get("no_cd"):
                 text += " (без КД)"
     kb.add(types.InlineKeyboardButton("🔙 Назад", callback_data="market"))
@@ -750,44 +695,44 @@ def market_privileges(call):
     bot.send_message(uid, text, parse_mode="Markdown", reply_markup=kb)
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith("buy_status_"))
-def confirm_buy_status(call):
+def buy_status(call):
     uid = call.from_user.id
-    status_name = call.data.replace("buy_status_", "")
-    if status_name not in STATUS_INFO:
+    name = call.data.replace("buy_status_", "")
+    if name not in STATUS_INFO:
         bot.answer_callback_query(call.id, "❌ Статус не найден!", True)
         return
-    info = STATUS_INFO[status_name]
+    info = STATUS_INFO[name]
     price = info["price"]
-    coins = get_coins(uid)
-    current_status, _ = get_status_and_bonus(uid)
     status, _ = get_status_and_bonus(uid)
-    discount = 0.25 if status == "👑 Герцог" else 0
-    final_price = int(price*(1-discount))
-    status_order = ["🟢 Новичок","🔵 Продвинутый","🟣 Опытный","🟠 Эксперт","🔴 Мастер","👑 Бог","👑 Герцог"]
-    cur_idx = status_order.index(current_status) if current_status in status_order else 0
-    new_idx = status_order.index(status_name) if status_name in status_order else 0
+    disc = 0.25 if status == "👑 Герцог" else 0
+    final = int(price*(1-disc))
+    coins = get_coins(uid)
+    if coins < final:
+        bot.answer_callback_query(call.id, f"❌ Нужно {final}, у тебя {coins}", True)
+        return
+    order = ["🟢 Новичок","🔵 Продвинутый","🟣 Опытный","🟠 Эксперт","🔴 Мастер","👑 Бог","👑 Герцог"]
+    cur = status if status in order else 0
+    new_idx = order.index(name)
+    cur_idx = order.index(cur) if cur in order else 0
     if new_idx <= cur_idx:
-        bot.answer_callback_query(call.id, f"❌ У тебя уже есть статус {current_status} или выше!", True)
+        bot.answer_callback_query(call.id, f"❌ У тебя уже есть {status} или выше!", True)
         return
-    if coins < final_price:
-        bot.answer_callback_query(call.id, f"❌ Нужно {final_price}, у тебя {coins}", True)
-        return
-    remove_coins(uid, final_price)
-    admin_share = int(final_price*0.5)
+    remove_coins(uid, final)
+    admin_share = int(final * 0.5)
     add_coins(ADMIN_ID, admin_share)
-    bot.send_message(ADMIN_ID, f"💰 Админ получил {admin_share} от покупки {status_name} от {uid}")
+    bot.send_message(ADMIN_ID, f"💰 Админ получил {admin_share} от покупки {name} от {uid}")
     if uid not in user_stats:
         user_stats[uid] = {"admin_give":0,"admin_take":0,"fortune_win":0,"ttt_win":0,"download":0,"report":0,"total_earned":0,"status":"","title":""}
-    user_stats[uid]["status"] = status_name
+    user_stats[uid]["status"] = name
     save_stats()
-    bot.answer_callback_query(call.id, f"✅ Статус {status_name} куплен!", True)
-    text = f"🎉 **Поздравляем!**\nТы приобрёл статус {status_name} за {final_price} монет!\n✨ Бонус: +{int((info['bonus']-1)*100)}%\n"
+    bot.answer_callback_query(call.id, f"✅ Статус {name} куплен!", True)
+    text = f"🎉 Ты купил статус {name} за {final} монет!\n✨ +{int((info['bonus']-1)*100)}% к заработку"
     if info.get("no_cd"):
-        text += "⚡ Теперь у тебя нет кулдауна!\n"
-    text += f"💰 Остаток: {get_coins(uid)}"
+        text += "\n⚡ Теперь без кулдауна!"
+    text += f"\n💰 Остаток: {get_coins(uid)}"
     bot.send_message(uid, text, parse_mode="Markdown")
 
-# =============== CRACK PLUS В МАГАЗИНЕ ===============
+# =============== CRACK PLUS (ИСПРАВЛЕН) ===============
 @bot.callback_query_handler(func=lambda call: call.data == "market_crackplus")
 def market_crackplus(call):
     uid = call.from_user.id
@@ -796,15 +741,15 @@ def market_crackplus(call):
         return
     coins = get_coins(uid)
     status, _ = get_status_and_bonus(uid)
-    discount = 0.25 if status == "👑 Герцог" else 0
+    disc = 0.25 if status == "👑 Герцог" else 0
     price = 60000
-    final_price = int(price*(1-discount))
+    final = int(price*(1-disc))
     kb = types.InlineKeyboardMarkup()
-    kb.add(types.InlineKeyboardButton(f"✅ Купить за {final_price}", callback_data="buy_crack_plus"), types.InlineKeyboardButton("🔙 Назад", callback_data="market"))
-    text = f"📦 **Crack Plus**\n💰 {final_price} монет"
-    if discount > 0:
+    kb.add(types.InlineKeyboardButton(f"✅ Купить за {final}", callback_data="buy_crack_plus"), types.InlineKeyboardButton("🔙 Назад", callback_data="market"))
+    text = f"📦 **Crack Plus**\n💰 Цена: {final}"
+    if disc:
         text += f" (было {price})"
-    text += f"\n\n✨ В комплекте:\n• Ссылка на эксклюзивный софт\n• Уникальный ключ активации\n\n⚠️ Покупка навсегда!\n💰 Твой баланс: {coins}"
+    text += f"\n\n✨ В комплекте:\n• Ссылка на софт\n• Уникальный ключ\n\n⚠️ Навсегда!\n💰 Твой баланс: {coins}"
     bot.answer_callback_query(call.id)
     bot.send_message(uid, text, parse_mode="Markdown", reply_markup=kb)
 
@@ -816,21 +761,21 @@ def buy_crack_plus(call):
         return
     coins = get_coins(uid)
     status, _ = get_status_and_bonus(uid)
-    discount = 0.25 if status == "👑 Герцог" else 0
+    disc = 0.25 if status == "👑 Герцог" else 0
     price = 60000
-    final_price = int(price*(1-discount))
-    if coins < final_price:
-        bot.answer_callback_query(call.id, f"❌ Нужно {final_price}, у тебя {coins}", True)
+    final = int(price*(1-disc))
+    if coins < final:
+        bot.answer_callback_query(call.id, f"❌ Нужно {final}, у тебя {coins}", True)
         return
-    remove_coins(uid, final_price)
+    remove_coins(uid, final)
     key = generate_key()
-    admin_share = int(final_price*0.3)
+    admin_share = int(final * 0.3)
     add_coins(ADMIN_ID, admin_share)
     bot.send_message(ADMIN_ID, f"💰 Админ получил {admin_share} от покупки Crack Plus от {uid}")
-    bot.answer_callback_query(call.id, "✅ Crack Plus куплен!", True)
+    bot.answer_callback_query(call.id, "✅ Куплено!", True)
     bot.send_message(uid, f"🎉 **CRACK PLUS КУПЛЕН!**\n\n🔗 Ссылка:\n{CRACK_PLUS_LINK}\n\n🔑 Ключ: `{key}`\n\n💰 Остаток: {get_coins(uid)}", parse_mode="Markdown")
 
-# =============== КЕЙСЫ В МАГАЗИНЕ ===============
+# =============== КЕЙСЫ ===============
 @bot.callback_query_handler(func=lambda call: call.data == "market_cases")
 def market_cases(call):
     uid = call.from_user.id
@@ -839,19 +784,19 @@ def market_cases(call):
         return
     coins = get_coins(uid)
     status, _ = get_status_and_bonus(uid)
-    discount = 0.25 if status == "👑 Герцог" else 0
+    disc = 0.25 if status == "👑 Герцог" else 0
     kb = types.InlineKeyboardMarkup(row_width=1)
     text = f"🎲 **Кейсы**\n💰 {coins} монет\n"
-    if discount > 0:
-        text += f"🎉 Скидка {int(discount*100)}%\n\n"
-    for case_id, case in CASES.items():
+    if disc:
+        text += f"🎉 Скидка {int(disc*100)}%\n\n"
+    for cid, case in CASES.items():
         price = case["price"]
-        final_price = int(price*(1-discount))
-        kb.add(types.InlineKeyboardButton(f"{case['name']} — {final_price}", callback_data=f"case_{case_id}"))
-        text += f"• {case['name']}: {final_price} монет"
-        if discount > 0:
+        final = int(price*(1-disc))
+        kb.add(types.InlineKeyboardButton(f"{case['name']} — {final}", callback_data=f"case_{cid}"))
+        text += f"• {case['name']}: {final}"
+        if disc:
             text += f" (было {price})"
-        text += f" (выпадение {case['min']}-{case['max']} монет)\n"
+        text += f" (выпадение {case['min']}-{case['max']})\n"
     kb.add(types.InlineKeyboardButton("🔙 Назад", callback_data="market"))
     bot.answer_callback_query(call.id)
     bot.send_message(uid, text, parse_mode="Markdown", reply_markup=kb)
@@ -859,45 +804,43 @@ def market_cases(call):
 @bot.callback_query_handler(func=lambda call: call.data.startswith("case_"))
 def open_case(call):
     uid = call.from_user.id
-    case_id = call.data.replace("case_", "")
-    if case_id not in CASES:
+    cid = call.data.replace("case_", "")
+    if cid not in CASES:
         bot.answer_callback_query(call.id, "❌ Кейс не найден!", True)
         return
     if is_banned(uid):
         bot.answer_callback_query(call.id, "❌ Вы забанены!", True)
         return
-    case = CASES[case_id]
+    case = CASES[cid]
     status, _ = get_status_and_bonus(uid)
-    discount = 0.25 if status == "👑 Герцог" else 0
+    disc = 0.25 if status == "👑 Герцог" else 0
     price = case["price"]
-    final_price = int(price*(1-discount))
-    coins = get_coins(uid)
-    if coins < final_price:
-        bot.answer_callback_query(call.id, f"❌ Нужно {final_price}, у тебя {coins}", True)
+    final = int(price*(1-disc))
+    if get_coins(uid) < final:
+        bot.answer_callback_query(call.id, f"❌ Нужно {final}!", True)
         return
-    remove_coins(uid, final_price)
+    remove_coins(uid, final)
     if status in ["👑 Бог","👑 Герцог"] and random.random() < 0.7:
         win = case["max"]
-        bot.send_message(uid, f"✨ Твой статус {status} даёт 70% шанс на максимальный выигрыш!\n🎉 Максимальное значение: {win} монет!", parse_mode="Markdown")
+        bot.send_message(uid, f"✨ Статус {status} даёт 70% шанс на максимум!\n🎉 +{win} монет!", parse_mode="Markdown")
     else:
         win = random.randint(case["min"], case["max"])
     add_coins(uid, win)
-    admin_share = int(final_price*0.3)
+    admin_share = int(final * 0.3)
     add_coins(ADMIN_ID, admin_share)
     bot.send_message(ADMIN_ID, f"💰 Админ получил {admin_share} от открытия {case['name']} от {uid}")
-    result = f"🎉 **{case['name']} открыт!**\n💰 Цена: {final_price}"
-    if discount > 0:
-        result += f" (было {price})"
-    result += f"\n🏆 Выигрыш: {win} монет\n📈 Чистый выигрыш: {win-final_price}\n💰 Новый баланс: {get_coins(uid)}"
-    bot.answer_callback_query(call.id, f"✅ Кейс открыт! Выигрыш: {win} монет", True)
-    bot.send_message(uid, result, parse_mode="Markdown")
+    res = f"🎉 **{case['name']} открыт!**\n💰 Цена: {final}"
+    if disc:
+        res += f" (было {price})"
+    res += f"\n🏆 Выигрыш: {win}\n📈 Чистый: {win-final}\n💰 Новый баланс: {get_coins(uid)}"
+    bot.answer_callback_query(call.id, f"✅ Выигрыш: {win}!", True)
+    bot.send_message(uid, res, parse_mode="Markdown")
 
-# =============== КАСТОМИЗАЦИЯ ДЛЯ ГЕРЦОГА ===============
+# =============== КАСТОМИЗАЦИЯ ===============
 @bot.callback_query_handler(func=lambda call: call.data == "customize")
 def customize_menu(call):
     uid = call.from_user.id
-    status, _ = get_status_and_bonus(uid)
-    if status != "👑 Герцог":
+    if get_status_and_bonus(uid)[0] != "👑 Герцог":
         bot.answer_callback_query(call.id, "❌ Только для 👑 Герцог!", True)
         return
     kb = types.InlineKeyboardMarkup(row_width=2)
@@ -911,9 +854,9 @@ def customize_menu(call):
         types.InlineKeyboardButton("❌ Ничего", callback_data="custom_none"),
         types.InlineKeyboardButton("🔙 Назад", callback_data="back_to_menu")
     )
-    current = duke_settings.get(uid, {}).get("color", "не установлен")
+    cur = duke_settings.get(uid, {}).get("color", "не установлен")
     bot.answer_callback_query(call.id)
-    bot.send_message(uid, f"🎨 **Кастомизация**\nТекущий цвет: {current}\nВыбери стиль:", parse_mode="Markdown", reply_markup=kb)
+    bot.send_message(uid, f"🎨 **Кастомизация**\nТекущий: {cur}\nВыбери стиль:", parse_mode="Markdown", reply_markup=kb)
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith("custom_"))
 def apply_custom(call):
@@ -922,10 +865,9 @@ def apply_custom(call):
         duke_settings[uid] = {}
     color = call.data.replace("custom_", "")
     if color == "none":
-        if "color" in duke_settings[uid]:
-            del duke_settings[uid]["color"]
+        duke_settings[uid].pop("color", None)
         save_duke_settings()
-        bot.send_message(call.message.chat.id, "✅ Настройки сброшены!")
+        bot.send_message(call.message.chat.id, "✅ Сброшено!")
         bot.answer_callback_query(call.id, "✅ Сброшено!", True)
         return
     duke_settings[uid]["color"] = color
@@ -942,18 +884,18 @@ def give_coins_menu(call):
         return
     bot.answer_callback_query(call.id)
     msg = bot.send_message(call.message.chat.id, "💰 Введите ID и сумму:\nПример: 123456789 500")
-    bot.register_next_step_handler(msg, process_give_coins)
+    bot.register_next_step_handler(msg, process_give)
 
-def process_give_coins(m):
+def process_give(m):
     if not is_admin(m.from_user.id):
         return
     try:
         uid, amt = map(int, m.text.split())
         if amt < 1 or amt > 100000:
-            bot.send_message(m.chat.id, "❌ Сумма от 1 до 100000!")
+            bot.send_message(m.chat.id, "❌ 1-100000")
             return
         add_coins_with_bonus(uid, amt, "admin_give")
-        bot.send_message(m.chat.id, f"✅ Выдано {amt} монет\n💰 Баланс: {get_coins(uid)}")
+        bot.send_message(m.chat.id, f"✅ Выдано {amt}\n💰 Баланс: {get_coins(uid)}")
         try:
             bot.send_message(uid, f"💰 Вам начислено {amt} монет!")
         except:
@@ -968,22 +910,22 @@ def take_coins_menu(call):
         return
     bot.answer_callback_query(call.id)
     msg = bot.send_message(call.message.chat.id, "💰 Введите ID и сумму для списания:\nПример: 123456789 500")
-    bot.register_next_step_handler(msg, process_take_coins)
+    bot.register_next_step_handler(msg, process_take)
 
-def process_take_coins(m):
+def process_take(m):
     if not is_admin(m.from_user.id):
         return
     try:
         uid, amt = map(int, m.text.split())
         if amt < 1:
-            bot.send_message(m.chat.id, "❌ Сумма > 0!")
+            bot.send_message(m.chat.id, "❌ >0")
             return
         if get_coins(uid) < amt:
             bot.send_message(m.chat.id, f"❌ У {uid} недостаточно!")
             return
         remove_coins(uid, amt)
         update_user_stat(uid, "admin_take", amt)
-        bot.send_message(m.chat.id, f"✅ Списано {amt} монет\n💰 Баланс: {get_coins(uid)}")
+        bot.send_message(m.chat.id, f"✅ Списано {amt}\n💰 Баланс: {get_coins(uid)}")
         try:
             bot.send_message(uid, f"💰 У вас списано {amt} монет!")
         except:
@@ -1059,7 +1001,7 @@ def admin_stats(call):
         return
     bot.answer_callback_query(call.id)
     total = sum(coins_data.values())
-    text = f"📊 **Статистика бота**\n📥 Скачиваний: {download_count}\n👥 Пользователей: {len(users)}\n💰 Всего монет: {total}\n🎰 Фортуна: {sum(s.get('fortune_win',0) for s in user_stats.values())}\n❌⭕ Крестики: {sum(s.get('ttt_win',0) for s in user_stats.values())}\n📋 В ЧС: {len(blacklist)}"
+    text = f"📊 **Статистика**\n📥 Скачиваний: {download_count}\n👥 Пользователей: {len(users)}\n💰 Всего монет: {total}\n🎰 Фортуна: {sum(s.get('fortune_win',0) for s in user_stats.values())}\n❌⭕ Крестики: {sum(s.get('ttt_win',0) for s in user_stats.values())}\n📋 В ЧС: {len(blacklist)}"
     bot.send_message(call.message.chat.id, text, parse_mode="Markdown")
 
 @bot.callback_query_handler(func=lambda call: call.data == "admin_users")
@@ -1095,20 +1037,15 @@ def admin_stats_log(call):
     if not user_stats:
         bot.send_message(call.message.chat.id, "📊 Нет данных")
         return
-    sorted_users = sorted(user_stats.items(), key=lambda x: get_coins(x[0]), reverse=True)[:20]
+    sorted_u = sorted(user_stats.items(), key=lambda x: get_coins(x[0]), reverse=True)[:20]
     text = "📊 Логи действий:\n\n"
-    for uid, data in sorted_users:
+    for uid, data in sorted_u:
         status, bonus = get_status_and_bonus(uid)
         title = data.get("title","")
-        text += f"👤 ID: {uid}\n"
-        text += f"   🏆 Статус: {status} (+{int((bonus-1)*100)}%)\n"
+        text += f"👤 ID: {uid}\n   🏆 {status} (+{int((bonus-1)*100)}%)\n"
         if title:
-            text += f"   🏷 Звание: {title}\n"
-        text += f"   ✅ Выдано: {data['admin_give']}\n"
-        text += f"   ❌ Забрано: {data['admin_take']}\n"
-        text += f"   🎰 Фортуна: {data['fortune_win']}\n"
-        text += f"   ❌⭕ Крестики: {data['ttt_win']}\n"
-        text += f"   💰 Баланс: {get_coins(uid)}\n\n"
+            text += f"   🏷 {title}\n"
+        text += f"   ✅ Выдано: {data['admin_give']}\n   ❌ Забрано: {data['admin_take']}\n   🎰 Фортуна: {data['fortune_win']}\n   ❌⭕ Крестики: {data['ttt_win']}\n   💰 Баланс: {get_coins(uid)}\n\n"
     bot.send_message(call.message.chat.id, text)
 
 @bot.callback_query_handler(func=lambda call: call.data == "admin_give_status")
@@ -1128,23 +1065,23 @@ def admin_give_status_ask(call):
     if not is_admin(call.from_user.id):
         bot.answer_callback_query(call.id, "❌ Нет доступа!", True)
         return
-    status_name = call.data.replace("admin_give_status_", "")
+    s = call.data.replace("admin_give_status_", "")
     bot.answer_callback_query(call.id)
-    msg = bot.send_message(call.message.chat.id, f"✏️ Введите ID пользователя для выдачи {status_name}:")
-    bot.register_next_step_handler(msg, lambda m: admin_give_status(m, status_name))
+    msg = bot.send_message(call.message.chat.id, f"✏️ Введите ID для выдачи {s}:")
+    bot.register_next_step_handler(msg, lambda m: admin_give_status(m, s))
 
-def admin_give_status(m, status_name):
+def admin_give_status(m, s):
     if not is_admin(m.from_user.id):
         return
     try:
         uid = int(m.text.strip())
         if uid not in user_stats:
             user_stats[uid] = {"admin_give":0,"admin_take":0,"fortune_win":0,"ttt_win":0,"download":0,"report":0,"total_earned":0,"status":"","title":""}
-        user_stats[uid]["status"] = status_name
+        user_stats[uid]["status"] = s
         save_stats()
-        bot.send_message(m.chat.id, f"✅ {uid} выдан статус {status_name}")
+        bot.send_message(m.chat.id, f"✅ {uid} выдан статус {s}")
         try:
-            bot.send_message(uid, f"🏆 Админ выдал тебе статус {status_name}!")
+            bot.send_message(uid, f"🏆 Админ выдал тебе статус {s}!")
         except:
             pass
     except:
@@ -1164,23 +1101,23 @@ def broadcast_menu(call):
         bot.answer_callback_query(call.id, "❌ Нет доступа!", True)
         return
     bot.answer_callback_query(call.id)
-    msg = bot.send_message(call.message.chat.id, "📢 Введите текст для рассылки:")
+    msg = bot.send_message(call.message.chat.id, "📢 Введите текст рассылки:")
     bot.register_next_step_handler(msg, broadcast)
 
 def broadcast(m):
     text = m.text.strip()
-    success = fail = 0
+    ok = fail = 0
     bot.send_message(m.chat.id, "📢 Начинаю рассылку...")
     for uid in users:
         if is_banned(uid):
             continue
         try:
             bot.send_message(uid, f"📢 {text}")
-            success += 1
+            ok += 1
         except:
             fail += 1
         time.sleep(0.05)
-    bot.send_message(m.chat.id, f"✅ Рассылка: {success} доставлено, {fail} ошибок")
+    bot.send_message(m.chat.id, f"✅ Рассылка: {ok} доставлено, {fail} ошибок")
 
 @bot.callback_query_handler(func=lambda call: call.data == "admin_change_link")
 def change_link_menu(call):
@@ -1215,17 +1152,16 @@ def change_image(m):
 def handle_report(m):
     track_user(m)
     uid = m.from_user.id
-    user_name = m.from_user.first_name
-    user_username = f"@{m.from_user.username}" if m.from_user.username else "нет username"
-    report_text = m.text.strip()
+    name = m.from_user.first_name
+    username = f"@{m.from_user.username}" if m.from_user.username else "нет"
+    text = m.text.strip()
     if uid in waiting_for_report:
         del waiting_for_report[uid]
     add_coins_with_bonus(uid, 50, "report")
     bot.send_message(uid, "✅ Жалоба отправлена! +50 монет")
-    admin_msg = f"📢 НОВАЯ ЖАЛОБА!\n👤 {user_name}\n🆔 {uid}\n📱 {user_username}\n📝 {report_text}\n⏰ {time.strftime('%Y-%m-%d %H:%M:%S')}"
     kb = types.InlineKeyboardMarkup()
     kb.add(types.InlineKeyboardButton("💬 Ответить", callback_data=f"reply_{uid}"))
-    bot.send_message(ADMIN_ID, admin_msg, reply_markup=kb)
+    bot.send_message(ADMIN_ID, f"📢 **ЖАЛОБА**\n👤 {name}\n🆔 {uid}\n📱 {username}\n📝 {text}\n⏰ {time.strftime('%Y-%m-%d %H:%M:%S')}", reply_markup=kb)
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith("reply_"))
 def reply_to_user(call):
@@ -1239,7 +1175,7 @@ def reply_to_user(call):
 
 def send_reply(m, uid):
     try:
-        bot.send_message(uid, f"📢 Ответ администратора:\n\n{m.text.strip()}")
+        bot.send_message(uid, f"📢 **Ответ:**\n\n{m.text.strip()}")
         bot.send_message(m.chat.id, "✅ Ответ отправлен")
     except:
         bot.send_message(m.chat.id, "❌ Ошибка")
