@@ -347,9 +347,14 @@ def report_callback(call):
 # =============== КРЕСТИКИ-НОЛИКИ ===============
 def create_ttt_keyboard(board):
     kb = types.InlineKeyboardMarkup(row_width=3)
+    buttons = []
     for i in range(9):
         emoji = "❌" if board[i] == "X" else "⭕" if board[i] == "O" else "⬜"
-        kb.add(types.InlineKeyboardButton(emoji, callback_data=f"ttt_{i}"))
+        buttons.append(types.InlineKeyboardButton(emoji, callback_data=f"ttt_{i}"))
+    # Добавляем кнопки по строкам (3 кнопки в ряд)
+    kb.add(*buttons[:3])  # Первый ряд
+    kb.add(*buttons[3:6]) # Второй ряд
+    kb.add(*buttons[6:9]) # Третий ряд
     return kb
 
 def check_winner(board):
@@ -374,8 +379,8 @@ def format_board(board):
     symbols = {"X":"❌","O":"⭕","":"⬜"}
     rows = []
     for i in range(0,9,3):
-        rows.append(" ".join(symbols[board[j]] for j in range(i,i+3)))
-    return "```\n" + "\n".join(rows) + "\n```"
+        rows.append(" | ".join(symbols[board[j]] for j in range(i,i+3)))
+    return "```\n" + "\n---------\n".join(rows) + "\n```"
 
 def game_over_message(winner, board, bet):
     win = bet * 2
