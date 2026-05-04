@@ -183,7 +183,7 @@ def get_status_and_bonus(uid):
             return s, data["bonus"]
     return "🟢 Новичок", 1.0
 
-# =============== ФУНКЦИИ ДЛЯ БУСТОВ ===============
+# =============== ФУНКЦИИ ДЛЯ БУСТОВ И ПЕРМАНЕНТОВ ===============
 def load_boosts():
     global user_boosts
     if os.path.exists(BOOSTS_FILE):
@@ -210,6 +210,7 @@ def save_permanent():
     with open(PERMANENT_FILE, 'w') as f:
         json.dump(user_permanent, f)
 
+# =============== ФУНКЦИИ ДЛЯ ГЕРЦОГА ===============
 def load_duke_settings():
     global duke_settings
     if os.path.exists(DUKE_SETTINGS_FILE):
@@ -743,16 +744,16 @@ def market_crackplus(call):
     status, _ = get_status_and_bonus(uid)
     disc = 0.25 if status == "👑 Герцог" else 0
     price = 60000
-    final = int(price*(1-disc))
+    final = int(price * (1 - disc))
     kb = types.InlineKeyboardMarkup()
     kb.add(
         types.InlineKeyboardButton(f"✅ Купить за {final} монет", callback_data="buy_crack_plus"),
         types.InlineKeyboardButton("🔙 Назад", callback_data="market")
     )
-    text = f"📦 **Crack Plus**\n💲 Цена: {final}"
+    text = f"📦 **Crack Plus**\n💰 Цена: {final}"
     if disc:
         text += f" (было {price})"
-    text += f"\n\n✨ В комплекте:\n• Ссылка на софт\n• Уникальный ключ\n\n⚠️ Навсегда!\n💰 Твой баланс: {coins}"
+    text += f"\n\n✨ В комплекте:\n• Ссылка на софт\n• Уникальный ключ\n\n⚠️ Покупка навсегда!\n💰 Твой баланс: {coins}"
     bot.answer_callback_query(call.id)
     bot.send_message(uid, text, parse_mode="Markdown", reply_markup=kb)
 
@@ -766,7 +767,7 @@ def buy_crack_plus(call):
     status, _ = get_status_and_bonus(uid)
     disc = 0.25 if status == "👑 Герцог" else 0
     price = 60000
-    final = int(price*(1-disc))
+    final = int(price * (1 - disc))
     if coins < final:
         bot.answer_callback_query(call.id, f"❌ Нужно {final}, у тебя {coins}", True)
         return
@@ -794,7 +795,7 @@ def market_cases(call):
         text += f"🎉 Скидка {int(disc*100)}%\n\n"
     for cid, case in CASES.items():
         price = case["price"]
-        final = int(price*(1-disc))
+        final = int(price * (1 - disc))
         kb.add(types.InlineKeyboardButton(f"{case['name']} — {final}", callback_data=f"case_{cid}"))
         text += f"• {case['name']}: {final}"
         if disc:
@@ -818,12 +819,12 @@ def open_case(call):
     status, _ = get_status_and_bonus(uid)
     disc = 0.25 if status == "👑 Герцог" else 0
     price = case["price"]
-    final = int(price*(1-disc))
+    final = int(price * (1 - disc))
     if get_coins(uid) < final:
         bot.answer_callback_query(call.id, f"❌ Нужно {final}!", True)
         return
     remove_coins(uid, final)
-    if status in ["👑 Бог","👑 Герцог"] and random.random() < 0.7:
+    if status in ["👑 Бог", "👑 Герцог"] and random.random() < 0.7:
         win = case["max"]
         bot.send_message(uid, f"✨ Статус {status} даёт 70% шанс на максимум!\n🎉 +{win} монет!", parse_mode="Markdown")
     else:
@@ -835,7 +836,7 @@ def open_case(call):
     res = f"🎉 **{case['name']} открыт!**\n💰 Цена: {final}"
     if disc:
         res += f" (было {price})"
-    res += f"\n🏆 Выигрыш: {win}\n📈 Чистый: {win-final}\n💰 Новый баланс: {get_coins(uid)}"
+    res += f"\n🏆 Выигрыш: {win}\n📈 Чистый: {win - final}\n💰 Новый баланс: {get_coins(uid)}"
     bot.answer_callback_query(call.id, f"✅ Выигрыш: {win}!", True)
     bot.send_message(uid, res, parse_mode="Markdown")
 
