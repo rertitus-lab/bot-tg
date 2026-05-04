@@ -16,6 +16,16 @@ IMAGE_URL = "https://i.ibb.co/YBXZt30f/ggdoksraz.png"
 CRACK_PLUS_LINK = "https://www.mediafire.com/file/2w6a3y18ke8vr94/Crack_Plus.exe/file"
 CRACK_PLUS_PRICE = 60000
 
+# =============== СТАТУСЫ И ИХ БОНУСЫ ===============
+STATUS_INFO = {
+    "🟢 Новичок": {"price": 0, "bonus": 1.0},
+    "🔵 Продвинутый": {"price": 1000, "bonus": 1.1},
+    "🟣 Опытный": {"price": 5000, "bonus": 1.2},
+    "🟠 Эксперт": {"price": 20000, "bonus": 1.3},
+    "🔴 Мастер": {"price": 50000, "bonus": 1.4},
+    "👑 Бог": {"price": 100000, "bonus": 1.5}
+}
+
 # =============== ИНИЦИАЛИЗАЦИЯ ===============
 bot = telebot.TeleBot(TOKEN)
 app = Flask(__name__)
@@ -108,28 +118,54 @@ def load_stats():
                             "fortune_win": int(parts[5]),
                             "ttt_win": int(parts[6]) if len(parts) > 6 else 0,
                             "download": int(parts[7]) if len(parts) > 7 else 0,
-                            "report": int(parts[8]) if len(parts) > 8 else 0
+                            "report": int(parts[8]) if len(parts) > 8 else 0,
+                            "total_earned": int(parts[9]) if len(parts) > 9 else 0,
+                            "status": parts[10] if len(parts) > 10 else ""
                         }
     print(f"✅ Загружена статистика: {len(user_stats)} пользователей")
 
 def save_stats():
     with open(STATS_FILE, 'w') as f:
         for uid, data in user_stats.items():
-            f.write(f"{uid}|{uid}|{uid}|{data['admin_give']}|{data['admin_take']}|{data['fortune_win']}|{data['ttt_win']}|{data['download']}|{data['report']}\n")
+            f.write(f"{uid}|{uid}|{uid}|{data['admin_give']}|{data['admin_take']}|{data['fortune_win']}|{data['ttt_win']}|{data['download']}|{data['report']}|{data['total_earned']}|{data.get('status', '')}\n")
 
 def update_user_stat(uid, stat_name, amount):
     if uid not in user_stats:
         user_stats[uid] = {
-            "admin_give": 0,
-            "admin_take": 0,
-            "fortune_win": 0,
-            "ttt_win": 0,
-            "download": 0,
-            "report": 0
+            "admin_give": 0, "admin_take": 0, "fortune_win": 0, "ttt_win": 0,
+            "download": 0, "report": 0, "total_earned": 0, "status": ""
         }
     if stat_name in user_stats[uid]:
         user_stats[uid][stat_name] += amount
     save_stats()
+
+def update_total_earned(uid, amount):
+    if uid not in user_stats:
+        user_stats[uid] = {
+            "admin_give": 0, "admin_take": 0, "fortune_win": 0, "ttt_win": 0,
+            "download": 0, "report": 0, "total_earned": 0, "status": ""
+        }
+    user_stats[uid]["total_earned"] += amount
+    save_stats()
+
+def get_total_earned(uid):
+    if uid in user_stats:
+        return user_stats[uid].get("total_earned", 0)
+    return 0
+
+def get_status_and_bonus(uid):
+    """Возвращает статус и бонус пользователя"""
+    if uid in user_stats and user_stats[uid].get("status"):
+        manual_status = user_stats[uid]["status"]
+        for status, data in STATUS_INFO.items():
+            if status == manual_status:
+                return manual_status, data["bonus"]
+        return manual_status, 1.0
+    total = get_total_earned(uid)
+    for status, data in STATUS_INFO.items():
+        if data["price"] <= total:
+            return status, data["bonus"]
+    return "🟢 Новичок", 1.0
 
 # =============== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ===============
 def is_banned(uid): return uid in blacklist
@@ -138,6 +174,16 @@ def get_coins(uid): return coins_data.get(uid, 0)
 def add_coins(uid, amt): 
     coins_data[uid] = get_coins(uid) + amt
     save_coins()
+
+def add_coins_with_bonus(uid, amount, source):
+    """Добавляет монеты с учётом бонуса статуса"""
+    status, bonus = get_status_and_bonus(uid)
+    bonus_amount = int(amount * bonus)
+    add_coins(uid, bonus_amount)
+    update_user_stat(uid, source, amount)
+    update_total_earned(uid, bonus_amount)
+    return bonus_amount
+
 def remove_coins(uid, amt):
     if get_coins(uid) >= amt:
         coins_data[uid] -= amt
@@ -293,11 +339,10 @@ def ttt_move(call):
     winner = check_winner(board)
     if winner == "X":
         win_amount = bet * 2
-        add_coins(uid, win_amount)
-        update_user_stat(uid, "ttt_win", win_amount)
+        add_coins_with_bonus(uid, win_amount, "ttt_win")
         bot.edit_message_text(game_over_message("X", board, bet), chat_id, message_id, parse_mode="Markdown")
         del ttt_games[uid]
-        bot.answer_callback_query(call.id, f"🎉 Ты выиграл {win_amount} монет!", show_alert=True)
+        bot.answer_callback_query(call.id, f"🎉 Ты выиграл с бонусом!", show_alert=True)
         return
     elif winner == "draw":
         add_coins(uid, bet)
@@ -319,12 +364,10 @@ def ttt_move(call):
         if winner == "O":
             bot.edit_message_text(game_over_message("O", board, bet), chat_id, message_id, parse_mode="Markdown")
             del ttt_games[uid]
-            bot.answer_callback_query(call.id, f"😔 Ты проиграл {bet} монет", show_alert=True)
         elif winner == "draw":
             add_coins(uid, bet)
             bot.edit_message_text(game_over_message("draw", board, bet), chat_id, message_id, parse_mode="Markdown")
             del ttt_games[uid]
-            bot.answer_callback_query(call.id, f"🤝 Ничья! Возвращено {bet} монет", show_alert=True)
         else:
             game["turn"] = "user"
             kb = create_ttt_keyboard(board)
@@ -389,8 +432,7 @@ def fortune_spin(call):
             prizes = [10, 20, 50, 100]
             win = random.choice(prizes)
         remove_coins(uid, bet)
-        add_coins(uid, win)
-        update_user_stat(uid, "fortune_win", win)
+        add_coins_with_bonus(uid, win, "fortune_win")
         final_coins = get_coins(uid)
         result_text = f"🎉 **ПОБЕДА!** 🎉\n\n💰 Ставка: {bet} монет\n🏆 Выигрыш: {win} монет\n💵 Чистый выигрыш: +{win - bet} монет\n💰 Новый баланс: {final_coins} монет"
         bot.send_message(uid, result_text, parse_mode="Markdown")
@@ -415,10 +457,11 @@ def back_to_menu(call):
         types.InlineKeyboardButton("🎯 Подробнее", callback_data="more"),
         types.InlineKeyboardButton("👥 Поделиться", callback_data="share"),
         types.InlineKeyboardButton("📢 Репорт", callback_data="report"),
-        types.InlineKeyboardButton("💰 Баланс", callback_data="balance"),
+        types.InlineKeyboardButton("📊 Статистика", callback_data="stats"),
         types.InlineKeyboardButton("🌐 Crack Plus", callback_data="crack_plus"),
         types.InlineKeyboardButton("🎰 Колесо фортуны", callback_data="fortune_wheel"),
-        types.InlineKeyboardButton("❌ Крестики-нолики", callback_data="tic_tac_toe")
+        types.InlineKeyboardButton("❌ Крестики-нолики", callback_data="tic_tac_toe"),
+        types.InlineKeyboardButton("🏆 Купить статус", callback_data="buy_status")
     )
     bot.send_message(uid, "Crack Sbornik - 💥 лучший сборник кряков именно для тебя!", reply_markup=kb)
 
@@ -431,18 +474,20 @@ def start(m):
         bot.send_message(uid, "❌ Вы забанены!")
         return
     users.add(uid)
-    add_coins(uid, 10)
-    bot.send_message(uid, f"💰 +10 монет! Баланс: {get_coins(uid)}")
+    add_coins_with_bonus(uid, 10, "start")
+    bot.send_message(uid, f"💰 +10 монет с учётом бонуса статуса! Баланс: {get_coins(uid)}")
+    
     kb = types.InlineKeyboardMarkup(row_width=1)
     kb.add(
         types.InlineKeyboardButton("📥 Crack Free", callback_data="download"),
         types.InlineKeyboardButton("🎯 Подробнее", callback_data="more"),
         types.InlineKeyboardButton("👥 Поделиться", callback_data="share"),
         types.InlineKeyboardButton("📢 Репорт", callback_data="report"),
-        types.InlineKeyboardButton("💰 Баланс", callback_data="balance"),
+        types.InlineKeyboardButton("📊 Статистика", callback_data="stats"),
         types.InlineKeyboardButton("🌐 Crack Plus", callback_data="crack_plus"),
         types.InlineKeyboardButton("🎰 Колесо фортуны", callback_data="fortune_wheel"),
-        types.InlineKeyboardButton("❌ Крестики-нолики", callback_data="tic_tac_toe")
+        types.InlineKeyboardButton("❌ Крестики-нолики", callback_data="tic_tac_toe"),
+        types.InlineKeyboardButton("🏆 Купить статус", callback_data="buy_status")
     )
     bot.send_message(uid, "Crack Sbornik - 💥 лучший сборник кряков именно для тебя!", reply_markup=kb)
 
@@ -480,7 +525,8 @@ def admin(m):
         types.InlineKeyboardButton("📊 Трекер", callback_data="admin_tracker"),
         types.InlineKeyboardButton("💰 Выдать монеты", callback_data="admin_give_coins"),
         types.InlineKeyboardButton("💰 Забрать монеты", callback_data="admin_take_coins"),
-        types.InlineKeyboardButton("📊 Логи действий", callback_data="admin_stats_log")
+        types.InlineKeyboardButton("📊 Логи действий", callback_data="admin_stats_log"),
+        types.InlineKeyboardButton("🏆 Выдать статус", callback_data="admin_give_status")
     )
     bot.send_message(m.chat.id, "🔧 Админ-панель", reply_markup=kb)
 
@@ -491,6 +537,199 @@ def cancel(m):
     if uid in waiting_for_report:
         del waiting_for_report[uid]
         bot.reply_to(m, "❌ Отменено")
+
+# =============== СТАТИСТИКА ПОЛЬЗОВАТЕЛЯ ===============
+@bot.callback_query_handler(func=lambda call: call.data == "stats")
+def stats_callback(call):
+    uid = call.from_user.id
+    if is_banned(uid):
+        bot.answer_callback_query(call.id, "❌ Вы забанены!", True)
+        return
+    
+    coins = get_coins(uid)
+    status, bonus = get_status_and_bonus(uid)
+    bonus_percent = int((bonus - 1) * 100)
+    
+    stats = user_stats.get(uid, {})
+    fortune_win = stats.get("fortune_win", 0)
+    ttt_win = stats.get("ttt_win", 0)
+    admin_give = stats.get("admin_give", 0)
+    total_earned = stats.get("total_earned", 0)
+    
+    text = f"📊 **Твоя статистика**\n\n"
+    text += f"👤 **Имя:** {call.from_user.first_name}\n"
+    if call.from_user.username:
+        text += f"📱 **Username:** @{call.from_user.username}\n"
+    text += f"🆔 **ID:** `{uid}`\n\n"
+    
+    text += f"💰 **Баланс:** {coins} монет\n"
+    text += f"🏆 **Статус:** {status}\n"
+    text += f"✨ **Бонус к заработку:** +{bonus_percent}%\n"
+    text += f"📈 **Всего заработано:** {total_earned} монет\n\n"
+    
+    text += f"🎰 **Выигрыш в Фортуне:** {fortune_win} монет\n"
+    text += f"❌⭕ **Выигрыш в Крестиках:** {ttt_win} монет\n"
+    text += f"👑 **Получено от админа:** {admin_give} монет\n"
+    
+    bot.answer_callback_query(call.id)
+    bot.send_message(uid, text, parse_mode="Markdown")
+
+# =============== МАГАЗИН СТАТУСОВ ===============
+@bot.callback_query_handler(func=lambda call: call.data == "buy_status")
+def buy_status_menu(call):
+    uid = call.from_user.id
+    if is_banned(uid):
+        bot.answer_callback_query(call.id, "❌ Вы забанены!", True)
+        return
+    
+    coins = get_coins(uid)
+    current_status, bonus = get_status_and_bonus(uid)
+    
+    kb = types.InlineKeyboardMarkup(row_width=1)
+    for status_name, info in STATUS_INFO.items():
+        if status_name != "🟢 Новичок":
+            price = info["price"]
+            kb.add(types.InlineKeyboardButton(f"{status_name} — {price} монет", callback_data=f"buy_status_{status_name}"))
+    kb.add(types.InlineKeyboardButton("🔙 Назад", callback_data="back_to_menu"))
+    
+    text = f"🏆 **Магазин статусов**\n\n"
+    text += f"💰 Твой баланс: {coins} монет\n"
+    text += f"📊 Твой статус: {current_status}\n"
+    text += f"✨ **Твой бонус к заработку:** +{int((bonus - 1) * 100)}%\n\n"
+    text += "**Доступные статусы:**"
+    
+    bot.answer_callback_query(call.id)
+    bot.send_message(uid, text, parse_mode="Markdown", reply_markup=kb)
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith("buy_status_"))
+def show_status_info(call):
+    uid = call.from_user.id
+    status_name = call.data.replace("buy_status_", "")
+    
+    info = STATUS_INFO.get(status_name, {})
+    price = info.get("price", 0)
+    bonus = info.get("bonus", 1.0)
+    bonus_percent = int((bonus - 1) * 100)
+    
+    text = f"🏆 **{status_name}**\n\n"
+    text += f"💰 Цена: {price} монет\n"
+    text += f"✨ Бонус к заработку: +{bonus_percent}%\n\n"
+    text += f"⚠️ Статус действует **навсегда** после покупки!"
+    
+    kb = types.InlineKeyboardMarkup()
+    kb.add(
+        types.InlineKeyboardButton("✅ Купить", callback_data=f"confirm_buy_{status_name}"),
+        types.InlineKeyboardButton("🔙 Назад", callback_data="buy_status")
+    )
+    
+    bot.answer_callback_query(call.id)
+    bot.send_message(uid, text, parse_mode="Markdown", reply_markup=kb)
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith("confirm_buy_"))
+def confirm_buy_status(call):
+    uid = call.from_user.id
+    status_name = call.data.replace("confirm_buy_", "")
+    
+    info = STATUS_INFO.get(status_name, {})
+    price = info.get("price", 0)
+    
+    coins = get_coins(uid)
+    current_status, _ = get_status_and_bonus(uid)
+    
+    status_order = ["🟢 Новичок", "🔵 Продвинутый", "🟣 Опытный", "🟠 Эксперт", "🔴 Мастер", "👑 Бог"]
+    current_index = status_order.index(current_status) if current_status in status_order else 0
+    new_index = status_order.index(status_name) if status_name in status_order else 0
+    
+    if new_index <= current_index:
+        bot.answer_callback_query(call.id, f"❌ У тебя уже есть статус {current_status} или выше!", True)
+        return
+    
+    if coins < price:
+        bot.answer_callback_query(call.id, f"❌ Не хватает монет! Нужно {price}, у тебя {coins}", True)
+        return
+    
+    remove_coins(uid, price)
+    
+    if uid not in user_stats:
+        user_stats[uid] = {
+            "admin_give": 0, "admin_take": 0, "fortune_win": 0, "ttt_win": 0,
+            "download": 0, "report": 0, "total_earned": 0, "status": ""
+        }
+    
+    user_stats[uid]["status"] = status_name
+    save_stats()
+    
+    bot.answer_callback_query(call.id, f"✅ Ты купил статус {status_name}!", True)
+    
+    text = f"🎉 **Поздравляем!** 🎉\n\n"
+    text += f"Ты приобрёл статус **{status_name}** за {price} монет!\n\n"
+    text += f"✨ **Твой новый бонус к заработку:** +{int((info['bonus'] - 1) * 100)}%\n\n"
+    text += f"💰 Твой текущий баланс: {get_coins(uid)} монет"
+    
+    bot.send_message(uid, text, parse_mode="Markdown")
+
+# =============== ВЫДАЧА СТАТУСА АДМИНОМ ===============
+@bot.callback_query_handler(func=lambda call: call.data == "admin_give_status")
+def give_status_menu(call):
+    if not is_admin(call.from_user.id):
+        bot.answer_callback_query(call.id, "❌ Нет доступа!", True)
+        return
+    
+    kb = types.InlineKeyboardMarkup(row_width=2)
+    status_order = ["🟢 Новичок", "🔵 Продвинутый", "🟣 Опытный", "🟠 Эксперт", "🔴 Мастер", "👑 Бог"]
+    for status in status_order:
+        kb.add(types.InlineKeyboardButton(status, callback_data=f"admin_status_{status}"))
+    kb.add(types.InlineKeyboardButton("🔙 Назад", callback_data="admin_back_to_panel"))
+    
+    bot.answer_callback_query(call.id)
+    bot.send_message(call.message.chat.id, "🏆 **Выбери статус для выдачи:**", parse_mode="Markdown", reply_markup=kb)
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith("admin_status_"))
+def ask_user_id_for_status(call):
+    if not is_admin(call.from_user.id):
+        bot.answer_callback_query(call.id, "❌ Нет доступа!", True)
+        return
+    
+    status_name = call.data.replace("admin_status_", "")
+    bot.answer_callback_query(call.id)
+    
+    msg = bot.send_message(call.message.chat.id, f"✏️ Введите ID пользователя, которому выдать статус **{status_name}**:", parse_mode="Markdown")
+    bot.register_next_step_handler(msg, lambda m: give_status_to_user(m, status_name))
+
+def give_status_to_user(message, status_name):
+    if not is_admin(message.from_user.id):
+        bot.send_message(message.chat.id, "❌ Нет доступа!")
+        return
+    
+    try:
+        uid = int(message.text.strip())
+    except:
+        bot.send_message(message.chat.id, "❌ Ошибка! Введите ID пользователя (число).")
+        return
+    
+    if uid not in user_stats:
+        user_stats[uid] = {
+            "admin_give": 0, "admin_take": 0, "fortune_win": 0, "ttt_win": 0,
+            "download": 0, "report": 0, "total_earned": 0, "status": ""
+        }
+    
+    user_stats[uid]["status"] = status_name
+    save_stats()
+    
+    bot.send_message(message.chat.id, f"✅ Пользователю `{uid}` выдан статус **{status_name}**!", parse_mode="Markdown")
+    
+    try:
+        bot.send_message(uid, f"🏆 Администратор выдал тебе статус **{status_name}**!\n\nПоздравляем! 🎉", parse_mode="Markdown")
+    except:
+        pass
+
+@bot.callback_query_handler(func=lambda call: call.data == "admin_back_to_panel")
+def admin_back_to_panel(call):
+    if not is_admin(call.from_user.id):
+        bot.answer_callback_query(call.id, "❌ Нет доступа!", True)
+        return
+    bot.answer_callback_query(call.id)
+    admin(call.message)
 
 # =============== ПОКАЗ ЛОГОВ ===============
 @bot.callback_query_handler(func=lambda call: call.data == "admin_stats_log")
@@ -527,7 +766,7 @@ def crack_plus_callback(call):
         return
     update_cd(uid)
     bot.answer_callback_query(call.id)
-    bot.send_message(uid, "🌐 **Crack Plus**\n\n💲 цена 60000 монет\n\nНапишите /buy чтобы купить!\n\n/start дает +10 монет!", parse_mode="Markdown")
+    bot.send_message(uid, "🌐 **Crack Plus**\n\n💲 цена 60000 монет\n\nНапишите /buy чтобы купить!\n\n/start дает монеты с бонусом статуса!", parse_mode="Markdown")
 
 # =============== ВЫДАЧА/ЗАБОР МОНЕТ ===============
 @bot.callback_query_handler(func=lambda call: call.data == "admin_give_coins")
@@ -545,11 +784,10 @@ def process_give_coins(message):
         if amt < 1 or amt > 100000:
             bot.send_message(message.chat.id, "❌ Сумма от 1 до 100000!")
             return
-        add_coins(uid, amt)
-        update_user_stat(uid, "admin_give", amt)
-        bot.send_message(message.chat.id, f"✅ Выдано {amt} монет\n💰 Баланс: {get_coins(uid)}")
+        add_coins_with_bonus(uid, amt, "admin_give")
+        bot.send_message(message.chat.id, f"✅ Выдано {amt} монет с бонусом!\n💰 Баланс: {get_coins(uid)}")
         try:
-            bot.send_message(uid, f"💰 Вам начислено {amt} монет!")
+            bot.send_message(uid, f"💰 Вам начислено {amt} монет с бонусом статуса!")
         except:
             pass
     except:
@@ -599,7 +837,7 @@ def callback(call):
         msg = bot.send_message(call.message.chat.id, f"Введите ответ для {user_id}:")
         bot.register_next_step_handler(msg, lambda m: send_reply(m, user_id))
         return
-    if call.data not in ["balance", "crack_plus", "fortune_wheel", "fortune_10", "fortune_50", "fortune_100", "fortune_300", "fortune_5000", "fortune_10000", "tic_tac_toe", "ttt_bet_50", "ttt_bet_100", "ttt_bet_300", "ttt_bet_1000", "ttt_bet_2000", "ttt_bet_10000", "admin_give_coins", "admin_take_coins", "admin_stats_log"]:
+    if call.data not in ["stats", "buy_status", "crack_plus", "fortune_wheel", "fortune_10", "fortune_50", "fortune_100", "fortune_300", "fortune_5000", "fortune_10000", "tic_tac_toe", "ttt_bet_50", "ttt_bet_100", "ttt_bet_300", "ttt_bet_1000", "ttt_bet_2000", "ttt_bet_10000", "admin_give_coins", "admin_take_coins", "admin_stats_log", "admin_give_status"]:
         cd = check_cd(uid)
         if cd > 0:
             bot.answer_callback_query(call.id, f"⏳ {cd} сек!", True)
@@ -617,14 +855,11 @@ def callback(call):
     elif call.data == "share":
         bot.answer_callback_query(call.id)
         bot.send_message(uid, f"👥 Поделиться:\nhttps://t.me/{bot.get_me().username}")
-    elif call.data == "balance":
-        bot.answer_callback_query(call.id)
-        bot.send_message(uid, f"💰 Баланс: {get_coins(uid)} монет")
     elif call.data == "report":
         waiting_for_report[uid] = True
         bot.answer_callback_query(call.id)
         bot.send_message(uid, "✍️ Напишите текст жалобы (/cancel для отмены)")
-    elif is_admin(uid) and call.data.startswith('admin_') and call.data not in ["admin_give_coins", "admin_take_coins", "admin_stats_log"]:
+    elif is_admin(uid) and call.data.startswith('admin_') and call.data not in ["admin_give_coins", "admin_take_coins", "admin_stats_log", "admin_give_status"]:
         if call.data == "admin_stats":
             bot.answer_callback_query(call.id)
             bot.send_message(uid, f"📊 Статистика:\n📥 Скачиваний: {download_count}\n👥 Пользователей: {len(users)}")
@@ -743,9 +978,8 @@ def handle_report(m):
     report_text = m.text.strip()
     if uid in waiting_for_report:
         del waiting_for_report[uid]
-    add_coins(uid, 50)
-    update_user_stat(uid, "report", 1)
-    bot.send_message(uid, "✅ Жалоба отправлена! +50 монет")
+    add_coins_with_bonus(uid, 50, "report")
+    bot.send_message(uid, "✅ Жалоба отправлена! +50 монет с бонусом")
     admin_message = f"📢 **НОВАЯ ЖАЛОБА!**\n\n👤 {user_name}\n🆔 ID: {uid}\n📱 {user_username}\n📝 {report_text}\n⏰ {time.strftime('%Y-%m-%d %H:%M:%S')}"
     keyboard = types.InlineKeyboardMarkup()
     keyboard.add(types.InlineKeyboardButton("💬 Ответить", callback_data=f"reply_{uid}"))
