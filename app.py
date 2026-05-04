@@ -16,7 +16,7 @@ SOFT_LINK = "https://www.mediafire.com/file/giyvpt6yuy9so7m/Crack_Sbornik.exe/fi
 IMAGE_URL = "https://i.ibb.co/YBXZt30f/ggdoksraz.png"
 CRACK_PLUS_LINK = "https://www.mediafire.com/file/2w6a3y18ke8vr94/Crack_Plus.exe/file"
 
-# =============== СТАТУСЫ И ИХ БОНУСЫ ===============
+# =============== СТАТУСЫ ===============
 STATUS_INFO = {
     "🟢 Новичок": {"price": 0, "bonus": 1.0, "no_cd": False},
     "🔵 Продвинутый": {"price": 1000, "bonus": 1.1, "no_cd": False},
@@ -173,14 +173,14 @@ def get_total_earned(uid):
 def get_status_and_bonus(uid):
     if uid in user_stats and user_stats[uid].get("status"):
         manual = user_stats[uid]["status"]
-        for status, data in STATUS_INFO.items():
-            if status == manual:
+        for s, data in STATUS_INFO.items():
+            if s == manual:
                 return manual, data["bonus"]
         return manual, 1.0
     total = get_total_earned(uid)
-    for status, data in STATUS_INFO.items():
+    for s, data in STATUS_INFO.items():
         if data["price"] <= total:
-            return status, data["bonus"]
+            return s, data["bonus"]
     return "🟢 Новичок", 1.0
 
 # =============== ФУНКЦИИ ДЛЯ БУСТОВ ===============
@@ -230,10 +230,10 @@ def apply_customization(uid, text):
     if color == "rainbow":
         emojis = ["🔴","🟠","🟡","🟢","🔵","🟣"]
         lines = text.split('\n')
-        result = []
+        res = []
         for i, line in enumerate(lines):
-            result.append(f"{emojis[i % len(emojis)]} {line}")
-        return '\n'.join(result)
+            res.append(f"{emojis[i % len(emojis)]} {line}")
+        return '\n'.join(res)
     elif color == "red":
         return f"🔴 {text}"
     elif color == "blue":
@@ -393,12 +393,12 @@ def tic_tac_toe_menu(call):
         return
     kb = types.InlineKeyboardMarkup(row_width=2)
     kb.add(
-        types.InlineKeyboardButton("🎲 50 монет", callback_data="ttt_bet_50"),
-        types.InlineKeyboardButton("🎲 100 монет", callback_data="ttt_bet_100"),
-        types.InlineKeyboardButton("🎲 300 монет", callback_data="ttt_bet_300"),
-        types.InlineKeyboardButton("🎲 1000 монет", callback_data="ttt_bet_1000"),
-        types.InlineKeyboardButton("🎲 2000 монет", callback_data="ttt_bet_2000"),
-        types.InlineKeyboardButton("🎲 10000 монет", callback_data="ttt_bet_10000"),
+        types.InlineKeyboardButton("🎲 50", callback_data="ttt_bet_50"),
+        types.InlineKeyboardButton("🎲 100", callback_data="ttt_bet_100"),
+        types.InlineKeyboardButton("🎲 300", callback_data="ttt_bet_300"),
+        types.InlineKeyboardButton("🎲 1000", callback_data="ttt_bet_1000"),
+        types.InlineKeyboardButton("🎲 2000", callback_data="ttt_bet_2000"),
+        types.InlineKeyboardButton("🎲 10000", callback_data="ttt_bet_10000"),
         types.InlineKeyboardButton("🔙 Назад", callback_data="back_to_menu")
     )
     bot.answer_callback_query(call.id)
@@ -412,7 +412,7 @@ def start_ttt_game(call):
         bot.answer_callback_query(call.id, "❌ Вы забанены!", True)
         return
     if get_coins(uid) < bet:
-        bot.answer_callback_query(call.id, f"❌ Нужно {bet} монет!", True)
+        bot.answer_callback_query(call.id, f"❌ Нужно {bet}!", True)
         return
     bot.answer_callback_query(call.id)
     remove_coins(uid, bet)
@@ -677,7 +677,7 @@ def market_statuses(call):
     disc = 0.25 if status == "👑 Герцог" else 0
     kb = types.InlineKeyboardMarkup(row_width=1)
     text = f"🏆 **Статусы**\n💰 {coins} монет\n📊 Твой статус: {status}\n✨ +{int((bonus-1)*100)}%\n"
-    if disc > 0:
+    if disc:
         text += f"🎉 Скидка {int(disc*100)}%\n\n"
     for s, info in STATUS_INFO.items():
         if s != "🟢 Новичок":
