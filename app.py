@@ -731,7 +731,7 @@ def admin_back_to_panel(call):
     bot.answer_callback_query(call.id)
     admin(call.message)
 
-# =============== ПОКАЗ ЛОГОВ ===============
+# =============== ПОКАЗ ЛОГОВ ДЕЙСТВИЙ (СО СТАТУСАМИ) ===============
 @bot.callback_query_handler(func=lambda call: call.data == "admin_stats_log")
 def show_user_stats(call):
     if not is_admin(call.from_user.id):
@@ -745,7 +745,10 @@ def show_user_stats(call):
     text = "📊 *Логи действий:*\n\n"
     for uid, data in sorted_users[:30]:
         balance = get_coins(uid)
+        status, bonus = get_status_and_bonus(uid)
+        bonus_percent = int((bonus - 1) * 100)
         text += f"👤 *ID: {uid}*\n"
+        text += f"   🏆 Статус: {status} (+{bonus_percent}%)\n"
         text += f"   ✅ Выдано: {data['admin_give']}\n"
         text += f"   ❌ Забрано: {data['admin_take']}\n"
         text += f"   🎰 Фортуна: {data['fortune_win']}\n"
