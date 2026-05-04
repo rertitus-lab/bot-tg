@@ -215,6 +215,33 @@ def get_status_and_bonus(uid):
             return status, data["bonus"]
     return "🟢 Новичок", 1.0
 
+# =============== ФУНКЦИИ ДЛЯ БУСТОВ И ПЕРМАНЕНТОВ ===============
+def load_boosts():
+    global user_boosts
+    if os.path.exists(BOOSTS_FILE):
+        with open(BOOSTS_FILE, 'r') as f:
+            user_boosts = json.load(f)
+    else:
+        user_boosts = {}
+    print(f"✅ Загружены бусты: {len(user_boosts)} пользователей")
+
+def save_boosts():
+    with open(BOOSTS_FILE, 'w') as f:
+        json.dump(user_boosts, f)
+
+def load_permanent():
+    global user_permanent
+    if os.path.exists(PERMANENT_FILE):
+        with open(PERMANENT_FILE, 'r') as f:
+            user_permanent = json.load(f)
+    else:
+        user_permanent = {}
+    print(f"✅ Загружены перманенты: {len(user_permanent)} пользователей")
+
+def save_permanent():
+    with open(PERMANENT_FILE, 'w') as f:
+        json.dump(user_permanent, f)
+
 # =============== ФУНКЦИИ ДЛЯ ГЕРЦОГА ===============
 def load_duke_settings():
     global duke_settings
