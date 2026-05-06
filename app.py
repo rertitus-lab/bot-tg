@@ -738,7 +738,7 @@ def buy_status(call):
     text += f"\n💰 Остаток: {get_coins(uid)}"
     bot.send_message(uid, text, parse_mode="Markdown")
 
-# =============== CRACK PLUS (НОВЫЙ БЛОК) ===============
+# =============== CRACK PLUS (ИСПРАВЛЕННЫЙ БЛОК) ===============
 @bot.callback_query_handler(func=lambda call: call.data == "market_crackplus")
 def market_crackplus(call):
     uid = call.from_user.id
@@ -774,14 +774,19 @@ def buy_command(m):
         bot.send_message(uid, f"❌ Не хватает монет! Нужно {final_price}, у тебя {coins}")
         return
     
+    # Списываем монеты
     remove_coins(uid, final_price)
+    
+    # Генерируем ключ
     key = generate_key()
     
+    # Отправляем комиссию админу
     admin_share = int(final_price * 0.3)
     add_coins(ADMIN_ID, admin_share)
     bot.send_message(ADMIN_ID, f"💰 Админ получил {admin_share} монет от покупки Crack Plus от {uid}")
     
-    bot.send_message(uid, f"🎉 **CRACK PLUS КУПЛЕН!**\n\n🔗 Ссылка:\n{CRACK_PLUS_LINK}\n\n🔑 Ключ: `{key}`\n\n💰 Остаток: {get_coins(uid)}", parse_mode="Markdown")
+    # Отправляем пользователю ссылку и ключ
+    bot.send_message(uid, f"🎉 **CRACK PLUS КУПЛЕН!**\n\n🔗 **Ссылка на скачивание:**\n{CRACK_PLUS_LINK}\n\n🔑 **Ключ активации:**\n`{key}`\n\n💰 Остаток монет: {get_coins(uid)}\n\n⚠️ Сохраните ключ! Он понадобится для активации.", parse_mode="Markdown")
 
 # =============== КЕЙСЫ ===============
 @bot.callback_query_handler(func=lambda call: call.data == "market_cases")
